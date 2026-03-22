@@ -114,6 +114,304 @@ Every new project directory should include:
 
 ---
 
+## Engineering Excellence
+
+### SOLID Principles
+
+Apply SOLID to all OOP and module design. These are non-negotiable baselines, not aspirational.
+
+**Single Responsibility Principle (SRP)**
+Every class and function has exactly one reason to change. If you find yourself writing
+"and" in a docstring summary, the unit is doing too much.
+
+```python
+# Bad: one class doing two jobs
+class UserManager:
+    def create_user(self, data): ...
+    def send_welcome_email(self, user): ...  # email delivery is a separate concern
+
+# Good: separated responsibilities
+class UserRepository:
+    def create(self, data: UserCreateDTO) -> User: ...
+
+class UserNotificationService:
+    def send_welcome(self, user: User) -> None: ...
+```
+
+**Open/Closed Principle (OCP)**
+Classes are open for extension, closed for modification. Extend via inheritance,
+composition, or strategy injection — not by editing stable code.
+
+```python
+# Good: new retrieval strategies extend the base without touching existing code
+class BaseRetriever(ABC):
+    @abstractmethod
+    def retrieve(self, query: str) -> list[Document]: ...
+
+class DenseRetriever(BaseRetriever): ...
+class HybridRetriever(BaseRetriever): ...
+```
+
+**Liskov Substitution Principle (LSP)**
+Subtypes must be substitutable for their base type without altering correctness.
+A subclass that throws `NotImplementedError` on a method it inherited is an LSP violation.
+
+**Interface Segregation Principle (ISP)**
+Prefer many small, focused interfaces over one broad one. Clients should not depend
+on methods they do not use.
+
+```python
+# Bad: one fat protocol
+class Storage(Protocol):
+    def read(self): ...
+    def write(self): ...
+    def delete(self): ...
+    def list(self): ...
+
+# Good: composable protocols
+class Readable(Protocol):
+    def read(self, key: str) -> bytes: ...
+
+class Writable(Protocol):
+    def write(self, key: str, value: bytes) -> None: ...
+```
+
+**Dependency Inversion Principle (DIP)**
+High-level modules must not depend on low-level modules. Both depend on abstractions.
+Inject dependencies — never instantiate concrete dependencies inside business logic.
+
+```python
+# Bad: hard dependency on a concrete class
+class AgentRunner:
+    def __init__(self):
+        self.llm = AnthropicClient()  # tightly coupled
+
+# Good: injected abstraction
+class AgentRunner:
+    def __init__(self, llm: LLMClient) -> None:
+        self.llm = llm
+```
+
+---
+
+### Design Patterns
+
+Use established patterns by name. Prefer composition over inheritance.
+
+| Pattern | When to use |
+|---------|-------------|
+| **Strategy** | Swappable algorithms (retrieval methods, chunking strategies, model providers) |
+| **Factory / Factory Method** | Object creation with varying concrete types |
+| **Builder** | Constructing complex objects step-by-step (prompt builders, pipeline configs) |
+| **Observer / Event Bus** | Decoupled event-driven pipelines, agent callbacks |
+| **Repository** | Abstract data access from business logic |
+| **Adapter** | Wrap third-party SDKs to shield the rest of the codebase from external API churn |
+| **Decorator** | Add cross-cutting concerns (logging, caching, retries) without modifying core logic |
+| **Chain of Responsibility** | Sequential processing stages (middleware, agent tool chains) |
+
+Document which pattern a class implements in its docstring.
+
+---
+
+### Documentation Standards
+
+Code must be self-documenting at the naming level and formally documented at the API level.
+
+**Naming**
+- Names are prose. Read them aloud — they should form a sentence.
+- Variables: noun phrases (`retrieved_documents`, `embedding_batch`)
+- Functions: verb phrases (`retrieve_relevant_chunks`, `build_system_prompt`)
+- Booleans: `is_`, `has_`, `can_`, `should_` prefixes (`is_authenticated`, `has_context`)
+- Avoid abbreviations unless they are universally understood in the domain (`llm`, `rag`, `url`)
+
+**Docstrings (Python — Google style)**
+
+Every public module, class, and function has a docstring. No exceptions.
+
+```python
+def retrieve_documents(
+    query: str,
+    top_k: int = 5,
+    score_threshold: float = 0.75,
+) -> list[Document]:
+    """Retrieve the most semantically relevant documents for a query.
+
+    Performs dense vector search against the configured embedding index and
+    filters results below the score threshold before returning.
+
+    Args:
+        query: Natural language query string to embed and search with.
+        top_k: Maximum number of documents to return.
+        score_threshold: Minimum cosine similarity score (0.0–1.0) a document
+            must achieve to be included in results.
+
+    Returns:
+        A list of Document objects ordered by descending relevance score.
+        Returns an empty list if no documents meet the threshold.
+
+    Raises:
+        EmbeddingError: If the embedding model fails to encode the query.
+        IndexConnectionError: If the vector store is unreachable.
+
+    Example:
+        >>> docs = retrieve_documents("What is RAG?", top_k=3)
+        >>> [d.title for d in docs]
+        ['Retrieval-Augmented Generation Survey', ...]
+    """
+```
+
+**Docstrings (TypeScript — TSDoc)**
+
+```typescript
+/**
+ * Retrieve the most semantically relevant documents for a query.
+ *
+ * Performs dense vector search and filters results below the score threshold.
+ *
+ * @param query - Natural language query string to embed and search with.
+ * @param topK - Maximum number of documents to return. Defaults to 5.
+ * @param scoreThreshold - Minimum cosine similarity score (0.0–1.0). Defaults to 0.75.
+ * @returns Array of Document objects ordered by descending relevance score.
+ * @throws {EmbeddingError} If the embedding model fails to encode the query.
+ *
+ * @example
+ * ```ts
+ * const docs = await retrieveDocuments("What is RAG?", { topK: 3 });
+ * ```
+ */
+```
+
+**Inline Comments**
+
+Use inline comments to explain *why*, never *what*. The code already shows what.
+
+```python
+# Good: explains a non-obvious decision
+# Truncate to 8192 tokens rather than the model max to leave headroom for the
+# system prompt and tool definitions which are prepended at inference time.
+truncated_context = context[:8192]
+
+# Bad: restates the code
+context = context[:8192]  # truncate to 8192 tokens
+```
+
+**Module-level docstrings**
+
+Every file begins with a module docstring describing its purpose, its main exports,
+and any important architectural notes.
+
+---
+
+### Type Hints
+
+Full, precise typing is required everywhere. Typing is documentation that the runtime
+can verify.
+
+**Python**
+- All function signatures: parameters and return types.
+- All class attributes annotated in `__init__` or via `dataclass`/`pydantic`.
+- Use `from __future__ import annotations` for forward references.
+- Prefer specific types over `Any`. Use `Any` only as a last resort with a comment explaining why.
+- Use `TypeAlias` for complex repeated types.
+- Use `typing.Protocol` for structural typing of dependency boundaries.
+- Run `mypy` or `pyright` in strict mode. Zero type errors in `main`/`develop`.
+
+```python
+from __future__ import annotations
+from typing import TypeAlias
+from collections.abc import Sequence
+
+EmbeddingVector: TypeAlias = list[float]
+
+def embed_texts(texts: Sequence[str]) -> list[EmbeddingVector]:
+    ...
+```
+
+**TypeScript**
+- `strict: true` in `tsconfig.json` — always.
+- No `any`. Use `unknown` when the type is genuinely unknown, then narrow it.
+- Define `interface` or `type` for all data shapes. No anonymous object types in signatures.
+- Use `Readonly<T>` for data that should not be mutated after construction.
+- Prefer `type` for unions/intersections, `interface` for object shapes that may be extended.
+
+---
+
+### Testing Standards
+
+Tests are first-class code. They live alongside implementation, follow the same quality
+standards, and are written before or alongside features (TDD is encouraged).
+
+**Test Structure — Arrange / Act / Assert (AAA)**
+
+Every test follows three clearly separated phases:
+
+```python
+def test_retrieve_documents_filters_below_threshold():
+    # Arrange
+    mock_index = MockVectorIndex(
+        results=[
+            SearchResult(document=doc_a, score=0.9),
+            SearchResult(document=doc_b, score=0.6),  # below threshold
+        ]
+    )
+    retriever = DenseRetriever(index=mock_index, score_threshold=0.75)
+
+    # Act
+    results = retriever.retrieve("test query")
+
+    # Assert
+    assert len(results) == 1
+    assert results[0] == doc_a
+```
+
+**Test Naming**
+
+`test_<unit>_<scenario>_<expected_outcome>`
+
+```
+test_retrieve_documents_with_empty_query_raises_value_error
+test_agent_runner_when_tool_fails_retries_up_to_max_attempts
+test_user_repository_create_returns_persisted_user_with_id
+```
+
+**Coverage Targets**
+
+| Layer | Target |
+|-------|--------|
+| Domain logic / business rules | 90%+ |
+| Service / use-case layer | 80%+ |
+| Infrastructure adapters | 70%+ (integration tests cover the rest) |
+| Entrypoints (CLI, API routes) | Smoke tests minimum |
+
+**Test Types**
+
+- **Unit tests**: Pure logic, all dependencies mocked. Fast. No I/O.
+- **Integration tests**: Real infrastructure (DB, vector store, external APIs). Use
+  test containers or sandboxed environments. Marked with `@pytest.mark.integration`.
+- **End-to-end tests**: Full system path. Used sparingly for critical user journeys.
+- **Contract tests**: For LLM-dependent code — assert structural response shape, not
+  exact text. Prompt regressions are tested via evals, not unit tests.
+
+**Python Testing Stack**
+- `pytest` with `pytest-asyncio` for async tests
+- `pytest-cov` for coverage reporting
+- `respx` or `httpx` mock for HTTP client mocking
+- `factory_boy` for test data factories
+- `freezegun` for time-dependent tests
+
+**TypeScript Testing Stack**
+- `vitest` (preferred) or `jest`
+- `@testing-library/*` for UI component tests
+- `msw` for HTTP mocking
+
+**Rules**
+- Tests must pass before any PR is merged. No exceptions.
+- Flaky tests are treated as bugs and fixed immediately.
+- Never mock what you own — mock only at system boundaries (external APIs, DB, file system).
+- Do not test implementation details; test observable behavior.
+
+---
+
 ## AI / Claude Development Standards
 
 ### Model Selection
@@ -163,23 +461,70 @@ Always parameterize the model ID — do not hardcode it deep in logic.
 ### Python
 
 - Python 3.11+ preferred.
-- Use `uv` for dependency management where possible; otherwise `pip` with `requirements.txt`.
-- Formatting: `ruff` (replaces black + isort + flake8).
-- Type hints on all public functions.
-- Use `python-dotenv` for env var loading.
+- Use `uv` for dependency management; `pyproject.toml` as the project manifest.
+- Formatting: `ruff format` + `ruff check` (replaces black + isort + flake8 + pylint).
+- Type checking: `pyright` in strict mode. Zero errors required in `main`/`develop`.
+- Full type hints everywhere — see [Type Hints](#type-hints) above.
+- Docstrings: Google style — see [Documentation Standards](#documentation-standards) above.
+- Testing: `pytest` — see [Testing Standards](#testing-standards) above.
+- Use `pydantic` v2 for all data models, configuration, and validation.
+- Use `python-dotenv` for env var loading in scripts; `pydantic-settings` in applications.
+- Use `structlog` for structured, machine-readable logging.
+- Async-first for I/O-bound work: `asyncio` + `httpx` + `asyncpg` / `motor`.
+
+**Recommended project layout (Python):**
+```
+my-project/
+├── src/
+│   └── my_project/
+│       ├── __init__.py
+│       ├── domain/          # Pure business logic, no I/O
+│       ├── application/     # Use cases, orchestration
+│       ├── infrastructure/  # DB, API clients, external adapters
+│       └── entrypoints/     # CLI, API routes, Lambda handlers
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── pyproject.toml
+└── README.md
+```
 
 ### TypeScript / JavaScript
 
-- TypeScript preferred over JavaScript for any non-trivial project.
+- TypeScript always. Vanilla JavaScript only for config files.
 - Use `pnpm` as the package manager.
-- Formatting: `prettier` + `eslint`.
-- Strict mode enabled in `tsconfig.json`.
-- Prefer `zod` for runtime validation of external data.
+- Formatting: `prettier` + `eslint` with `@typescript-eslint`.
+- `strict: true` in `tsconfig.json`. No `any`. See [Type Hints](#type-hints) above.
+- Docstrings: TSDoc style — see [Documentation Standards](#documentation-standards) above.
+- Testing: `vitest` — see [Testing Standards](#testing-standards) above.
+- Use `zod` for runtime validation at all system boundaries.
+- Use `neverthrow` or explicit `Result<T, E>` types for error handling over thrown exceptions.
+- Logging: `pino` for structured JSON logs.
+
+**Recommended project layout (TypeScript):**
+```
+my-project/
+├── src/
+│   ├── domain/
+│   ├── application/
+│   ├── infrastructure/
+│   └── entrypoints/
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── package.json
+├── tsconfig.json
+└── README.md
+```
 
 ### General
 
-- All projects should be runnable with a single command documented in the README.
-- Docker / `docker-compose` encouraged for projects with infrastructure dependencies.
+- All projects runnable with a single command documented in `README.md`.
+- Docker / `docker-compose` required for any project with infrastructure dependencies.
+- All linters and type checkers run as pre-commit hooks (`pre-commit` framework).
+- CI must run: lint → type-check → unit tests → integration tests in that order.
 
 ---
 
