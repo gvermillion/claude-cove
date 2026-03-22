@@ -90,12 +90,16 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### Starting a New Project
 
-Every new project directory should include:
+Every new project directory must include:
 
+- `CLAUDE.md` — project-specific context, architecture decisions, run commands, and
+  any overrides to workspace-wide standards. **Required. Not optional.** See the
+  [Project CLAUDE.md](#project-claudemd) section for the template.
 - `README.md` — what it does, how to run it, environment variables required
 - `.env.example` — all required env vars listed with placeholder values (never commit `.env`)
+- `.pre-commit-config.yaml` — project-level pre-commit hooks
 - A top-level entrypoint (e.g., `main.py`, `index.ts`, `app.py`)
-- Dependency manifest (`requirements.txt` / `pyproject.toml` / `package.json`)
+- Dependency manifest (`pyproject.toml` / `package.json`)
 
 ### Environment Variables
 
@@ -460,7 +464,8 @@ Always parameterize the model ID — do not hardcode it deep in logic.
 
 ### Python
 
-- Python 3.11+ preferred.
+- Use the latest stable Python release. Pin the exact version in `.python-version`
+  (managed by `pyenv` or `uv`) so environments are reproducible across machines and CI.
 - Use `uv` for dependency management; `pyproject.toml` as the project manifest.
 - Formatting: `ruff format` + `ruff check` (replaces black + isort + flake8 + pylint).
 - Type checking: `pyright` in strict mode. Zero errors required in `main`/`develop`.
@@ -469,8 +474,30 @@ Always parameterize the model ID — do not hardcode it deep in logic.
 - Testing: `pytest` — see [Testing Standards](#testing-standards) above.
 - Use `pydantic` v2 for all data models, configuration, and validation.
 - Use `python-dotenv` for env var loading in scripts; `pydantic-settings` in applications.
-- Use `structlog` for structured, machine-readable logging.
-- Async-first for I/O-bound work: `asyncio` + `httpx` + `asyncpg` / `motor`.
+**Enterprise-grade package ecosystem (Python):**
+
+| Category | Package | Notes |
+|----------|---------|-------|
+| Runtime & deps | `uv` | Dependency management and virtual envs |
+| Data modeling | `pydantic` v2 | Models, validation, serialization |
+| Configuration | `pydantic-settings` | Typed config from env vars / files |
+| HTTP client | `httpx` | Async-first, type-safe, replaces `requests` |
+| Async framework | `fastapi` | APIs; `starlette` for lightweight services |
+| Database ORM | `sqlalchemy` 2.x | Async ORM; `asyncpg` driver for PostgreSQL |
+| Migrations | `alembic` | Schema migration tied to SQLAlchemy models |
+| Task queue | `celery` + `redis` or `arq` | Background jobs and scheduling |
+| Logging | `structlog` | Structured, machine-readable JSON logs |
+| Observability | `opentelemetry-sdk` + `prometheus-client` | Traces and metrics |
+| LLM clients | `anthropic` SDK | Always use official SDKs |
+| LLM observability | `langfuse` or `arize-phoenix` | Prompt tracing and evals |
+| Testing | `pytest` + `pytest-asyncio` + `factory-boy` + `respx` | Full test stack |
+| Linting/format | `ruff` | Replaces black, isort, flake8, pylint |
+| Type checking | `pyright` (strict) | Runs in CI and as pre-commit hook |
+| CLI | `typer` | Type-annotated CLIs backed by Pydantic |
+| Retry logic | `tenacity` | Configurable retry/backoff decorator |
+| Secrets | `python-dotenv` (dev), vault SDK / AWS SSM (prod) | Never hardcode |
+| Serialization | `orjson` | Fastest JSON serializer; drop-in for `json` |
+| Env pinning | `pyenv` / `uv` `.python-version` | Reproducible runtimes |
 
 **Recommended project layout (Python):**
 ```
@@ -500,7 +527,27 @@ my-project/
 - Testing: `vitest` — see [Testing Standards](#testing-standards) above.
 - Use `zod` for runtime validation at all system boundaries.
 - Use `neverthrow` or explicit `Result<T, E>` types for error handling over thrown exceptions.
-- Logging: `pino` for structured JSON logs.
+
+**Enterprise-grade package ecosystem (TypeScript):**
+
+| Category | Package | Notes |
+|----------|---------|-------|
+| Runtime & deps | `pnpm` + `Node.js` LTS | Use `.nvmrc` to pin Node version |
+| Validation | `zod` | Runtime schema validation at all boundaries |
+| HTTP framework | `hono` or `fastify` | Lightweight, type-safe, high-performance |
+| HTTP client | `ky` or `ofetch` | Fetch wrappers with retry and typed responses |
+| ORM | `drizzle-orm` or `prisma` | Drizzle for type-first; Prisma for DX |
+| Task queue | `bullmq` | Redis-backed job queues |
+| Logging | `pino` | Structured JSON logs; `pino-pretty` for dev |
+| Observability | `@opentelemetry/sdk-node` + `prom-client` | OTel traces + Prometheus metrics |
+| LLM clients | `@anthropic-ai/sdk` | Official SDK; always use this |
+| LLM observability | `langfuse` | Prompt tracing and evals |
+| Testing | `vitest` + `@testing-library/*` + `msw` | Full test stack |
+| Linting/format | `eslint` + `prettier` + `@typescript-eslint` | Strict ruleset |
+| Error handling | `neverthrow` | Typed Result/Either pattern |
+| CLI | `commander` or `@clack/prompts` | Type-safe CLIs |
+| Env vars | `@t3-oss/env-*` | Zod-validated env schemas |
+| Serialization | `superjson` | Handles Date/Map/Set; use where needed |
 
 **Recommended project layout (TypeScript):**
 ```
@@ -528,6 +575,328 @@ my-project/
 
 ---
 
+## Fail Early — Pre-commit & Local Quality Gates
+
+Bugs caught locally cost nothing. Bugs caught in CI cost minutes. Bugs caught in
+production cost trust. The goal is to push the detection boundary as far left as possible.
+
+### Pre-commit Hooks
+
+Every project must have a `.pre-commit-config.yaml`. Install with:
+
+```bash
+uv tool install pre-commit   # or: pip install pre-commit
+pre-commit install           # installs hooks into .git/hooks
+pre-commit install --hook-type commit-msg  # enforces conventional commits
+```
+
+**Workspace-standard hook set (Python projects):**
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  # --- Commit message format ---
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
+  # --- General hygiene ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ["--branch", "main", "--branch", "develop"]
+
+  # --- Secrets scanning ---
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # --- Python: formatting & linting ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # --- Python: type checking ---
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.371
+    hooks:
+      - id: pyright
+```
+
+**Workspace-standard hook set (TypeScript projects):**
+
+```yaml
+repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ["--branch", "main", "--branch", "develop"]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: typecheck
+        name: TypeScript type check
+        entry: pnpm tsc --noEmit
+        language: system
+        pass_filenames: false
+      - id: lint
+        name: ESLint
+        entry: pnpm eslint . --max-warnings 0
+        language: system
+        pass_filenames: false
+```
+
+### Rules
+
+- `pre-commit run --all-files` must pass cleanly before any PR is opened.
+- CI re-runs all hooks as the first step — local compliance does not skip CI checks.
+- Hooks that auto-fix (ruff, prettier) stage the fixes. Review them, then re-commit.
+- `--no-verify` is forbidden except in documented emergencies. Document the reason
+  in the commit message if used.
+- `detect-private-key` and `gitleaks` run on every commit. A block here means stop
+  everything and rotate the credential before continuing.
+
+---
+
+## Observability & Monitoring
+
+Observability is a first-tier engineering objective, not an afterthought. Every project
+that runs beyond a single script is instrumented from day one.
+
+### The Three Pillars
+
+**Logs** — structured, machine-readable, always written to stdout.
+
+- Python: `structlog` with JSON renderer in production, ConsoleRenderer in development.
+- TypeScript: `pino` with `pino-pretty` in development, raw JSON in production.
+- Every log entry must include: `timestamp`, `level`, `service`, `trace_id` (if in a
+  request context), and a human-readable `event` message.
+- Log levels are used semantically:
+  - `DEBUG` — detailed internal state, off in production by default
+  - `INFO` — normal operational events (request received, task completed)
+  - `WARNING` — unexpected but handled conditions
+  - `ERROR` — failures that require attention
+  - `CRITICAL` — system-level failures requiring immediate response
+
+```python
+import structlog
+
+log = structlog.get_logger(__name__)
+
+log.info(
+    "document_retrieval_completed",
+    query_length=len(query),
+    results_returned=len(results),
+    latency_ms=elapsed_ms,
+    trace_id=ctx.trace_id,
+)
+```
+
+**Metrics** — quantitative signals about system behavior over time.
+
+- Expose a `/metrics` endpoint (Prometheus format) on all HTTP services.
+- Instrument at minimum: request count, request latency (p50/p95/p99), error rate,
+  and any domain-specific business metrics (tokens consumed, retrievals per second, etc.).
+- Python: `prometheus-client` or `opentelemetry-sdk`.
+- TypeScript: `prom-client` or OpenTelemetry SDK.
+
+**Traces** — distributed context propagation across service/agent boundaries.
+
+- Use OpenTelemetry for all tracing instrumentation. Never use vendor-specific tracing SDKs
+  directly — instrument against the OTel API and configure the exporter separately.
+- Propagate `trace_id` and `span_id` through all async call chains.
+- For agentic pipelines: create a span per tool call, per LLM inference, and per retrieval.
+- Python: `opentelemetry-sdk` + `opentelemetry-instrumentation-*`
+- TypeScript: `@opentelemetry/sdk-node` + auto-instrumentations
+
+### AI-Specific Observability
+
+LLM calls are the most expensive and most variable operations. Instrument them thoroughly.
+
+Every LLM call must record:
+- `model` — exact model ID used
+- `input_tokens` — from the response usage object
+- `output_tokens` — from the response usage object
+- `latency_ms` — wall-clock time for the full inference call
+- `stop_reason` — why generation stopped
+- `tool_calls` — names of any tools invoked (not arguments, which may contain PII)
+
+For agents, also record per-run:
+- `total_turns` — number of inference steps
+- `total_tokens` — cumulative input + output
+- `tools_used` — list of distinct tools invoked
+- `outcome` — `success`, `max_turns_reached`, `error`, `user_interrupted`
+
+Use [Langfuse](https://langfuse.com) or [Arize Phoenix](https://phoenix.arize.com) as the
+LLM observability backend for tracing prompt/response pairs and eval scores.
+
+### Health Checks
+
+Every service exposes:
+- `GET /health` — liveness: returns `200` if the process is alive.
+- `GET /ready` — readiness: returns `200` only if all dependencies (DB, vector store,
+  model endpoint) are reachable. Returns `503` with a JSON body listing failed checks.
+
+### Alerting Baselines
+
+Document alert thresholds in the project `CLAUDE.md`. At minimum define:
+
+| Signal | Alert threshold |
+|--------|----------------|
+| Error rate | > 1% of requests over 5 min |
+| p95 latency | > 2× baseline over 5 min |
+| LLM token spend | > configured daily budget |
+| Failed health check | Any single failure |
+
+---
+
+## CI / CD
+
+CI/CD is the automated immune system of the codebase. Every check that can be
+automated must be automated. Manual steps in a release process are defects.
+
+### Pipeline Stages
+
+All projects use GitHub Actions. The pipeline runs in this order:
+
+```
+pre-commit → lint → type-check → unit-tests → integration-tests → build → deploy
+```
+
+Each stage is a separate job. A failing job blocks all downstream jobs.
+
+**Standard workflow file: `.github/workflows/ci.yml`**
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "latest" }
+      - uses: pre-commit/action@v3.0.1
+
+  lint-and-typecheck:
+    needs: pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run pyright
+
+  unit-tests:
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run pytest tests/unit --cov --cov-fail-under=80
+
+  integration-tests:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: test }
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run pytest tests/integration -m integration
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost/test
+
+  build:
+    needs: integration-tests
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v6
+        with:
+          push: false
+          tags: ${{ github.repository }}:${{ github.sha }}
+```
+
+### Branch Protection Rules
+
+Configure these on GitHub for `main` and `develop`:
+
+- Require all CI jobs to pass before merge.
+- Require at least 1 approving review for `main`.
+- Dismiss stale reviews on new pushes.
+- Require branches to be up to date before merging.
+- Do not allow force pushes or branch deletion.
+
+### Dependency Management
+
+- Pin all dependencies to exact versions in lock files (`uv.lock`, `pnpm-lock.yaml`).
+- Run `uv sync --frozen` / `pnpm install --frozen-lockfile` in CI — never allow CI to
+  silently upgrade dependencies.
+- Use Dependabot or Renovate to automate dependency update PRs on a weekly schedule.
+
+### Release Automation
+
+On merge to `main`, the CD pipeline:
+
+1. Extracts the version from the tag or `pyproject.toml`.
+2. Builds and pushes the Docker image tagged with the semver version and `latest`.
+3. Generates a GitHub Release with auto-generated changelog from conventional commits.
+4. Deploys to the target environment (defined per project in the project `CLAUDE.md`).
+
+Use `semantic-release` or `release-please` to automate version bumping from
+conventional commit history.
+
+---
+
 ## Security
 
 - Never commit secrets, credentials, or PII. Use `.gitignore` aggressively.
@@ -538,14 +907,68 @@ my-project/
 
 ---
 
+## Project CLAUDE.md
+
+Every project has its own `CLAUDE.md`. This is the primary context document Claude Code
+reads when working inside a project. It must be kept current — stale CLAUDE.md files
+are worse than none.
+
+**Required sections in every project CLAUDE.md:**
+
+```markdown
+# <Project Name>
+
+One-paragraph description of what this project does and why it exists.
+
+## Architecture
+
+Describe the high-level design: layers, key components, data flow.
+Mention which design patterns are in use and where.
+
+## How to Run
+
+Commands to install dependencies, run the app, and run tests. No prose — just commands.
+
+    uv sync
+    uv run python -m my_project
+
+## Environment Variables
+
+List every required variable and what it controls.
+
+    ANTHROPIC_API_KEY   # Anthropic API key
+    DATABASE_URL        # PostgreSQL connection string
+
+## Key Decisions & Constraints
+
+Document non-obvious decisions so they aren't accidentally undone.
+E.g. "We use X instead of Y because of Z."
+
+## CI / CD
+
+Note which pipeline file drives this project and what the deploy target is.
+
+## Observability
+
+Where logs go, what dashboards exist, what alerts are configured.
+
+## Standards Overrides
+
+List any workspace-standard deviations with justification.
+If there are none, write: "No overrides — workspace standards apply in full."
+```
+
+---
+
 ## Working with Claude (Claude Code)
 
-- Claude should read existing code before modifying it.
+- Always read the project's `CLAUDE.md` before making any changes.
+- Read existing code before modifying it. Never assume structure.
 - Prefer editing existing files over creating new ones.
 - Keep changes minimal and scoped to what was requested.
 - All Claude-generated branches follow the `claude/<task-id>` naming convention.
-- Claude should not push to `main` or `develop` directly.
-- Use `CLAUDE.md` files inside project subdirectories to override workspace defaults.
+- Claude must not push to `main` or `develop` directly.
+- Update the project `CLAUDE.md` when architecture or key decisions change.
 
 ---
 
