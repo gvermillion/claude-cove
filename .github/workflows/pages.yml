@@ -2,7 +2,7 @@ name: Deploy Book Library Scanner to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/book-library-scanner-XMPki]
     paths:
       - "projects/book-library-scanner/**"
       - ".github/workflows/pages.yml"
