@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   CSS custom properties — light and dark mode colour tokens.
+
+   The app adapts automatically to the user's OS/browser preference via the
+   prefers-color-scheme media query. No JS toggle needed — it's truly native.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* Light mode */
+  --color-bg: #f8fafc;
+  --color-bg-elevated: #ffffff;
+  --color-bg-card: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-border: #e2e8f0;
+  --color-accent: #0f172a;
+  --color-accent-fg: #ffffff;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode */
+    --color-bg: #0f172a;
+    --color-bg-elevated: #1e293b;
+    --color-bg-card: #1e293b;
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #475569;
+    --color-border: #1e293b;
+    --color-accent: #f8fafc;
+    --color-accent-fg: #0f172a;
+
+    color-scheme: dark;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Base styles
+--------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Respect safe areas on notched iOS devices */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent pull-to-refresh on iOS when inside scanner */
+  overscroll-behavior: none;
+}
+
+/* Hide scrollbars on filter tabs without losing scrollability */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area padding utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---------------------------------------------------------------------------
+   Adaptive component classes (light/dark)
+--------------------------------------------------------------------------- */
+
+@layer components {
+  .bg-surface {
+    background-color: var(--color-bg);
+  }
+
+  .bg-surface-elevated {
+    background-color: var(--color-bg-elevated);
+  }
+
+  .bg-surface-card {
+    background-color: var(--color-bg-card);
+  }
+
+  .text-on-surface {
+    color: var(--color-text-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-text-secondary);
+  }
+
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+
+  .border-surface {
+    border-color: var(--color-border);
+  }
+
+  /* Primary action button — inverts with theme */
+  .btn-primary {
+    @apply font-semibold rounded-xl px-4 py-2.5 transition-all active:scale-95;
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  /* Ghost / secondary button */
+  .btn-ghost {
+    @apply font-medium rounded-xl px-4 py-2.5 transition-all;
+    background-color: var(--color-bg-card);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-ghost:hover {
+    background-color: var(--color-bg-elevated);
+  }
+
+  /* Input field */
+  .input {
+    @apply w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none;
+    background-color: var(--color-bg-card);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+  }
+
+  .input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  }
+}
