@@ -4,6 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
 export default defineConfig({
+  base: "/claude-cove/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -22,8 +23,8 @@ export default defineConfig({
         background_color: "#0f172a",
         display: "standalone",
         orientation: "portrait",
-        scope: "/",
-        start_url: "/",
+        scope: "/claude-cove/",
+        start_url: "/claude-cove/",
         icons: [
           {
             src: "/icons/icon-192.png",
