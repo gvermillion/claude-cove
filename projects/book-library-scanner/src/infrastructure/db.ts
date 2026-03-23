@@ -4,11 +4,15 @@
  * Implements the Repository pattern to abstract all persistence concerns.
  * The database is fully offline-capable and requires no server.
  *
+ * Schema versions:
+ *   v1 — initial schema (isbn, title, readStatus, addedAt, authors)
+ *   v2 — adds isWishlist, tags, rating indexes; migrates new fields with defaults
+ *
  * @module infrastructure/db
  */
 
 import Dexie, { type EntityTable } from "dexie";
-import type { LibraryEntry } from "@/domain/book";
+import type { LibraryEntry, ReadingLogEntry } from "@/domain/book";
 
 // ---------------------------------------------------------------------------
 // Database schema
@@ -23,14 +27,57 @@ class LibraryDatabase extends Dexie {
     super("BookLibrary");
 
     this.version(1).stores({
-      // Indexed fields: id (auto-increment PK), isbn, title, readStatus, addedAt
       books: "++id, isbn, title, readStatus, addedAt, *authors",
     });
+
+    this.version(2)
+      .stores({
+        // Added indexes: rating, isWishlist, *tags (multi-entry for array queries)
+        books: "++id, isbn, title, readStatus, addedAt, rating, isWishlist, *tags, *authors",
+      })
+      .upgrade((tx) => {
+        // Migrate existing records by filling in new fields with their defaults
+        return tx
+          .table("books")
+          .toCollection()
+          .modify((book: LibraryEntry) => {
+            book.startedAt = book.startedAt ?? null;
+            book.finishedAt = book.finishedAt ?? null;
+            book.currentPage = book.currentPage ?? null;
+            book.tags = book.tags ?? [];
+            book.isWishlist = book.isWishlist ?? false;
+            book.loanedTo = book.loanedTo ?? null;
+            book.loanedAt = book.loanedAt ?? null;
+            book.readingLog = book.readingLog ?? [];
+          });
+      });
   }
 }
 
 /** Singleton database instance. */
 export const db = new LibraryDatabase();
+
+// ---------------------------------------------------------------------------
+// Enhanced stats type
+// ---------------------------------------------------------------------------
+
+/** Aggregate statistics about the user's library. */
+export interface LibraryStats {
+  total: number;
+  unread: number;
+  reading: number;
+  read: number;
+  dnf: number;
+  wishlist: number;
+  loanedOut: number;
+  readThisYear: number;
+  totalPagesRead: number;
+  averageRating: number | null;
+  topGenres: Array<{ genre: string; count: number }>;
+  topAuthors: Array<{ author: string; count: number }>;
+  /** Books read per month over the last 12 months (index 0 = 12 months ago). */
+  readingPaceByMonth: Array<{ month: string; count: number }>;
+}
 
 // ---------------------------------------------------------------------------
 // Repository
@@ -44,12 +91,29 @@ export const db = new LibraryDatabase();
  */
 export const libraryRepository = {
   /**
-   * Retrieve all books in the library, ordered by most recently added.
+   * Retrieve all library books (not wishlist), ordered by most recently added.
    *
    * @returns Array of library entries sorted by addedAt descending.
    */
   async getAll(): Promise<LibraryEntry[]> {
-    return db.books.orderBy("addedAt").reverse().toArray();
+    return db.books
+      .where("isWishlist")
+      .equals(0)
+      .reverse()
+      .sortBy("addedAt");
+  },
+
+  /**
+   * Retrieve all wishlist entries, ordered by most recently added.
+   *
+   * @returns Array of wishlist entries sorted by addedAt descending.
+   */
+  async getWishlist(): Promise<LibraryEntry[]> {
+    return db.books
+      .where("isWishlist")
+      .equals(1)
+      .reverse()
+      .sortBy("addedAt");
   },
 
   /**
@@ -111,23 +175,49 @@ export const libraryRepository = {
    * a client-side filter over all entries, which is acceptable for personal
    * libraries (typically <10k books).
    *
-   * @param query - The search string to match against title and authors.
+   * @param query - The search string to match against title, authors, and tags.
+   * @param wishlistOnly - When true, search only wishlist entries.
    * @returns Matching entries sorted by relevance (title match first).
    */
-  async search(query: string): Promise<LibraryEntry[]> {
+  async search(query: string, wishlistOnly = false): Promise<LibraryEntry[]> {
     const lower = query.toLowerCase();
-    const all = await db.books.toArray();
+    const all = wishlistOnly
+      ? await libraryRepository.getWishlist()
+      : await libraryRepository.getAll();
     return all.filter(
       (entry) =>
         entry.title.toLowerCase().includes(lower) ||
-        entry.authors.some((author) => author.toLowerCase().includes(lower)),
+        entry.authors.some((author) => author.toLowerCase().includes(lower)) ||
+        entry.tags.some((tag) => tag.toLowerCase().includes(lower)),
     );
   },
 
   /**
-   * Export the entire library as a JSON-serializable array.
+   * Return all books currently loaned out.
    *
-   * Useful for backup and data portability.
+   * @returns Entries where loanedTo is not null.
+   */
+  async getLoanedOut(): Promise<LibraryEntry[]> {
+    const all = await db.books.toArray();
+    return all.filter((b) => b.loanedTo !== null);
+  },
+
+  /**
+   * Return all unique tags used across the library.
+   *
+   * @returns Sorted array of unique tag strings.
+   */
+  async getAllTags(): Promise<string[]> {
+    const all = await db.books.toArray();
+    const tagSet = new Set<string>();
+    for (const entry of all) {
+      for (const tag of entry.tags) tagSet.add(tag);
+    }
+    return [...tagSet].sort();
+  },
+
+  /**
+   * Export the entire library as a JSON-serializable array.
    *
    * @returns All library entries.
    */
@@ -154,24 +244,123 @@ export const libraryRepository = {
   },
 
   /**
-   * Return aggregate statistics for the library.
+   * Return comprehensive library statistics.
    *
-   * @returns Counts by read status and total book count.
+   * @returns Detailed stats including reading pace, top genres, top authors.
    */
-  async getStats(): Promise<{
-    total: number;
-    unread: number;
-    reading: number;
-    read: number;
-    dnf: number;
-  }> {
+  async getStats(): Promise<LibraryStats> {
     const all = await db.books.toArray();
+    const library = all.filter((b) => !b.isWishlist);
+    const thisYear = new Date().getFullYear();
+
+    // Basic counts
+    const unread = library.filter((b) => b.readStatus === "unread").length;
+    const reading = library.filter((b) => b.readStatus === "reading").length;
+    const read = library.filter((b) => b.readStatus === "read").length;
+    const dnf = library.filter((b) => b.readStatus === "dnf").length;
+    const wishlist = all.filter((b) => b.isWishlist).length;
+    const loanedOut = library.filter((b) => b.loanedTo !== null).length;
+
+    // Books read this year (finished in current calendar year)
+    const readThisYear = library.filter(
+      (b) =>
+        b.readStatus === "read" &&
+        b.finishedAt !== null &&
+        new Date(b.finishedAt).getFullYear() === thisYear,
+    ).length;
+
+    // Total pages read (sum of pageCount for finished books)
+    const totalPagesRead = library
+      .filter((b) => b.readStatus === "read" && b.pageCount !== null)
+      .reduce((sum, b) => sum + (b.pageCount ?? 0), 0);
+
+    // Average rating (only rated books)
+    const ratedBooks = library.filter((b) => b.rating !== null);
+    const averageRating =
+      ratedBooks.length > 0
+        ? ratedBooks.reduce((sum, b) => sum + (b.rating ?? 0), 0) / ratedBooks.length
+        : null;
+
+    // Top genres
+    const genreCount = new Map<string, number>();
+    for (const book of library) {
+      for (const genre of book.genres) {
+        genreCount.set(genre, (genreCount.get(genre) ?? 0) + 1);
+      }
+    }
+    const topGenres = [...genreCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([genre, count]) => ({ genre, count }));
+
+    // Top authors
+    const authorCount = new Map<string, number>();
+    for (const book of library) {
+      for (const author of book.authors) {
+        authorCount.set(author, (authorCount.get(author) ?? 0) + 1);
+      }
+    }
+    const topAuthors = [...authorCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([author, count]) => ({ author, count }));
+
+    // Reading pace — books finished per month over the last 12 months
+    const readingPaceByMonth: Array<{ month: string; count: number }> = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+      const count = library.filter((b) => {
+        if (!b.finishedAt || b.readStatus !== "read") return false;
+        const fd = new Date(b.finishedAt);
+        return fd.getFullYear() === d.getFullYear() && fd.getMonth() === d.getMonth();
+      }).length;
+      readingPaceByMonth.push({ month: label, count });
+    }
+
     return {
-      total: all.length,
-      unread: all.filter((b) => b.readStatus === "unread").length,
-      reading: all.filter((b) => b.readStatus === "reading").length,
-      read: all.filter((b) => b.readStatus === "read").length,
-      dnf: all.filter((b) => b.readStatus === "dnf").length,
+      total: library.length,
+      unread,
+      reading,
+      read,
+      dnf,
+      wishlist,
+      loanedOut,
+      readThisYear,
+      totalPagesRead,
+      averageRating,
+      topGenres,
+      topAuthors,
+      readingPaceByMonth,
     };
+  },
+
+  /**
+   * Append a reading log entry to a book.
+   *
+   * @param id - The book's database id.
+   * @param entry - The log entry to append.
+   * @returns Number of records updated.
+   */
+  async addReadingLogEntry(id: number, entry: ReadingLogEntry): Promise<number> {
+    const book = await db.books.get(id);
+    if (!book) return 0;
+    const readingLog = [...(book.readingLog ?? []), entry];
+    return db.books.update(id, { readingLog });
+  },
+
+  /**
+   * Remove a reading log entry from a book.
+   *
+   * @param id - The book's database id.
+   * @param entryId - The id of the log entry to remove.
+   * @returns Number of records updated.
+   */
+  async removeReadingLogEntry(id: number, entryId: string): Promise<number> {
+    const book = await db.books.get(id);
+    if (!book) return 0;
+    const readingLog = (book.readingLog ?? []).filter((e) => e.id !== entryId);
+    return db.books.update(id, { readingLog });
   },
 };

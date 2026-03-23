@@ -26,6 +26,17 @@ export const ReadStatus = {
 
 export type ReadStatus = (typeof ReadStatus)[keyof typeof ReadStatus];
 
+/** Sort order for the library list. */
+export const SortOrder = {
+  ADDED_DESC: "added_desc",
+  ADDED_ASC: "added_asc",
+  TITLE_ASC: "title_asc",
+  AUTHOR_ASC: "author_asc",
+  RATING_DESC: "rating_desc",
+} as const;
+
+export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder];
+
 // ---------------------------------------------------------------------------
 // Book — the canonical representation of a book's bibliographic metadata.
 // ---------------------------------------------------------------------------
@@ -51,8 +62,23 @@ export const BookSchema = z.object({
 export type Book = z.infer<typeof BookSchema>;
 
 // ---------------------------------------------------------------------------
+// ReadingLogEntry — a date-stamped journal entry for a book.
+// ---------------------------------------------------------------------------
+
+export const ReadingLogEntrySchema = z.object({
+  /** Unique identifier (timestamp string). */
+  id: z.string(),
+  /** The journal entry content. */
+  content: z.string().min(1),
+  /** When this entry was written. */
+  createdAt: z.date(),
+});
+
+export type ReadingLogEntry = z.infer<typeof ReadingLogEntrySchema>;
+
+// ---------------------------------------------------------------------------
 // LibraryEntry — a book as it appears in the user's personal library.
-// Extends Book with user-specific data (status, notes, dates).
+// Extends Book with user-specific data (status, notes, dates, tags, etc.).
 // ---------------------------------------------------------------------------
 
 export const LibraryEntrySchema = BookSchema.extend({
@@ -71,8 +97,32 @@ export const LibraryEntrySchema = BookSchema.extend({
   /** Free-form personal notes. */
   notes: z.string(),
 
+  /** When the user started reading the book, if applicable. */
+  startedAt: z.date().nullable(),
+
   /** When the user finished the book, if applicable. */
   finishedAt: z.date().nullable(),
+
+  /** Current page the user is on, for in-progress books. */
+  currentPage: z.number().int().nonnegative().nullable(),
+
+  /** User-defined tags / shelves (e.g. "Favorites", "To Re-Read"). */
+  tags: z.array(z.string()),
+
+  /**
+   * When true, this book is on the wishlist (want to own) rather than
+   * already in the physical library.
+   */
+  isWishlist: z.boolean(),
+
+  /** Name of the person the book is currently loaned to, or null. */
+  loanedTo: z.string().nullable(),
+
+  /** When the loan was recorded, or null. */
+  loanedAt: z.date().nullable(),
+
+  /** Date-stamped reading journal entries for this book. */
+  readingLog: z.array(ReadingLogEntrySchema),
 });
 
 export type LibraryEntry = z.infer<typeof LibraryEntrySchema>;
@@ -104,15 +154,27 @@ export type ScanResult = z.infer<typeof ScanResultSchema>;
  * Create a new LibraryEntry from a Book with sensible defaults.
  *
  * @param book - The book metadata to base the entry on.
+ * @param overrides - Optional fields to override the defaults.
  * @returns A new LibraryEntry ready to be persisted.
  */
-export function createLibraryEntry(book: Book): Omit<LibraryEntry, "id"> {
+export function createLibraryEntry(
+  book: Book,
+  overrides: Partial<Omit<LibraryEntry, "id">> = {},
+): Omit<LibraryEntry, "id"> {
   return {
     ...book,
     addedAt: new Date(),
     readStatus: ReadStatus.UNREAD,
     rating: null,
     notes: "",
+    startedAt: null,
     finishedAt: null,
+    currentPage: null,
+    tags: [],
+    isWishlist: false,
+    loanedTo: null,
+    loanedAt: null,
+    readingLog: [],
+    ...overrides,
   };
 }

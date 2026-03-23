@@ -1,7 +1,8 @@
 /**
  * BookCard — compact card representation of a library entry.
  *
- * Displays cover thumbnail, title, authors, and read status badge.
+ * Displays cover thumbnail (or a generated placeholder), title, authors,
+ * read status badge, tags, and loan/wishlist indicators.
  * Navigates to the book detail view on click. Adapts to system dark/light mode.
  *
  * @module entrypoints/components/BookCard
@@ -10,9 +11,12 @@
 import { useNavigate } from "react-router-dom";
 import type { LibraryEntry } from "@/domain/book";
 import { StarRating } from "./StarRating";
+import { CoverPlaceholder } from "./CoverPlaceholder";
 
 interface BookCardProps {
   entry: LibraryEntry;
+  /** Optional action rendered in the bottom-right corner (e.g. "Move to Library" button). */
+  action?: React.ReactNode;
 }
 
 const STATUS_BADGE: Record<
@@ -42,12 +46,18 @@ const STATUS_BADGE: Record<
 };
 
 /**
- * Compact card for displaying a library entry in a grid or list view.
+ * Compact card for displaying a library entry in a list view.
  * Uses CSS custom properties for theme-aware background/text colours.
  */
-export function BookCard({ entry }: BookCardProps) {
+export function BookCard({ entry, action }: BookCardProps) {
   const navigate = useNavigate();
   const badge = STATUS_BADGE[entry.readStatus];
+
+  // Reading progress percentage (only if we have both currentPage and pageCount)
+  const progressPct =
+    entry.currentPage !== null && entry.pageCount
+      ? Math.min(100, Math.round((entry.currentPage / entry.pageCount) * 100))
+      : null;
 
   return (
     <article
@@ -72,9 +82,7 @@ export function BookCard({ entry }: BookCardProps) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-2xl text-muted">
-            📚
-          </div>
+          <CoverPlaceholder title={entry.title} className="w-full h-full" textSize="text-xl" />
         )}
       </div>
 
@@ -90,15 +98,70 @@ export function BookCard({ entry }: BookCardProps) {
           {entry.publishedYear && (
             <p className="text-muted text-xs">{entry.publishedYear}</p>
           )}
+
+          {/* Tags (up to 2 shown) */}
+          {entry.tags.length > 0 && (
+            <div className="flex gap-1 mt-1 flex-wrap">
+              {entry.tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] px-1.5 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: "var(--color-bg)",
+                    color: "var(--color-text-muted)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+              {entry.tags.length > 2 && (
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded-full"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  +{entry.tags.length - 2}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 mt-1">
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.lightClass} ${badge.darkClass}`}
-          >
-            {badge.label}
-          </span>
-          {entry.rating && <StarRating value={entry.rating} readOnly size="sm" />}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {!entry.isWishlist && (
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.lightClass} ${badge.darkClass}`}
+            >
+              {badge.label}
+            </span>
+          )}
+
+          {entry.loanedTo && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-200">
+              Lent to {entry.loanedTo}
+            </span>
+          )}
+
+          {entry.rating && !entry.isWishlist && (
+            <StarRating value={entry.rating} readOnly size="sm" />
+          )}
+
+          {/* Reading progress pill */}
+          {progressPct !== null && entry.readStatus === "reading" && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              {progressPct}%
+            </span>
+          )}
+
+          {action && (
+            <div
+              className="ml-auto"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              {action}
+            </div>
+          )}
         </div>
       </div>
     </article>
