@@ -11,7 +11,7 @@
  * @module application/lookupBook
  */
 
-import { err, ok, type Result } from "neverthrow";
+import { err, type Result } from "neverthrow";
 import type { Book } from "@/domain/book";
 import { fetchBookByIsbn as fetchFromOpenLibrary } from "@/infrastructure/openLibraryClient";
 import { fetchBookByIsbn as fetchFromGoogleBooks } from "@/infrastructure/googleBooksClient";

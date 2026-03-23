@@ -79,7 +79,9 @@ export const libraryRepository = {
    * @returns The auto-generated numeric id.
    */
   async add(entry: Omit<LibraryEntry, "id">): Promise<number> {
-    return db.books.add(entry as LibraryEntry);
+    const id = await db.books.add(entry as LibraryEntry);
+    if (id === undefined) throw new Error("IndexedDB add() returned undefined");
+    return id as number;
   },
 
   /**
