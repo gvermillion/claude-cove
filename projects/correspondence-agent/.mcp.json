@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "gmail-phdata": {
+      "command": "npx",
+      "args": ["-y", "@gongrzhe/server-gmail-autoauth-mcp"],
+      "env": {
+        "GMAIL_CREDENTIALS_PATH": "~/.gmail-mcp/phdata/"
+      }
+    },
+    "gmail-pgmc": {
+      "command": "npx",
+      "args": ["-y", "@gongrzhe/server-gmail-autoauth-mcp"],
+      "env": {
+        "GMAIL_CREDENTIALS_PATH": "~/.gmail-mcp/pgmc/"
+      }
+    },
+    "gmail-multdems": {
+      "command": "npx",
+      "args": ["-y", "@gongrzhe/server-gmail-autoauth-mcp"],
+      "env": {
+        "GMAIL_CREDENTIALS_PATH": "~/.gmail-mcp/multdems/"
+      }
+    },
+    "gmail-personal": {
+      "command": "npx",
+      "args": ["-y", "@gongrzhe/server-gmail-autoauth-mcp"],
+      "env": {
+        "GMAIL_CREDENTIALS_PATH": "~/.gmail-mcp/personal/"
+      }
+    }
+  }
+}
