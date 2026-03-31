@@ -23,6 +23,16 @@ MCP_API_KEY="${MCP_API_KEY:?MCP_API_KEY is required. Run: MCP_API_KEY=<secret> .
 
 SSH="ssh -i $KEY_PATH -o StrictHostKeyChecking=no"
 
+# Prompt for sudo password upfront so the rest of the script runs unattended.
+# sudo -S reads the password from stdin, avoiding the need for an interactive TTY.
+read -r -s -p "sudo password for $REMOTE_USER@$REMOTE_HOST: " SUDO_PASS
+echo ""
+
+# Helper: run a remote sudo command non-interactively via stdin password.
+remote_sudo() {
+  $SSH "$REMOTE_USER@$REMOTE_HOST" "echo '$SUDO_PASS' | sudo -S $*"
+}
+
 echo "==> Testing connection to $REMOTE_HOST"
 $SSH "$REMOTE_USER@$REMOTE_HOST" "echo '  OK: connected as $(whoami)'"
 
@@ -51,24 +61,29 @@ $SSH "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $VAULT_PATH"
 echo "==> Building and starting Docker container"
 $SSH "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker compose up -d --build"
 
+echo "==> Installing nginx location snippet"
+remote_sudo mkdir -p /etc/nginx/snippets
+remote_sudo cp "$REMOTE_DIR/nginx/mcp-location.conf" /etc/nginx/snippets/obsidian-mcp.conf
+echo "  Snippet written to /etc/nginx/snippets/obsidian-mcp.conf"
+
+# Add the include line to the vermillion.world config if not already present.
+NGINX_CONF="/etc/nginx/sites-available/vermillion.world"
+INCLUDE_LINE="    include /etc/nginx/snippets/obsidian-mcp.conf;"
+
+if $SSH "$REMOTE_USER@$REMOTE_HOST" "grep -q 'obsidian-mcp' $NGINX_CONF"; then
+  echo "  nginx include already present — skipping"
+else
+  echo "==> Adding include to $NGINX_CONF"
+  # Insert before the closing } of the HTTPS server block (last } in the file).
+  $SSH "$REMOTE_USER@$REMOTE_HOST" "echo '$SUDO_PASS' | sudo -S sed -i 's|^}$|$INCLUDE_LINE\n}|' $NGINX_CONF"
+  echo "  Added: $INCLUDE_LINE"
+fi
+
+echo "==> Validating and reloading nginx"
+remote_sudo nginx -t
+remote_sudo systemctl reload nginx
+
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Docker container is running. Two manual steps remain"
-echo "on the server (require sudo):"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "1. Copy the nginx snippet:"
-echo "   sudo mkdir -p /etc/nginx/snippets"
-echo "   sudo cp $REMOTE_DIR/nginx/mcp-location.conf /etc/nginx/snippets/obsidian-mcp.conf"
-echo ""
-echo "2. Add this line inside the HTTPS server {} block"
-echo "   in /etc/nginx/sites-available/vermillion.world:"
-echo ""
-echo "       include /etc/nginx/snippets/obsidian-mcp.conf;"
-echo ""
-echo "3. Validate and reload:"
-echo "   sudo nginx -t && sudo systemctl reload nginx"
-echo ""
-echo "4. Verify:"
-echo "   curl https://vermillion.world/mcp/health"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "==> Checking health endpoint"
+sleep 2
+curl -sf https://vermillion.world/mcp/health && echo "" && echo "SUCCESS — https://vermillion.world/mcp/sse is live"
