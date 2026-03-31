@@ -1,0 +1,38 @@
+services:
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obsidian-mcp
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Mount the vault directory as read-write so the server can create/update notes
+      - ${VAULT_PATH}:/vault:rw
+    environment:
+      # Override VAULT_PATH inside the container — the host path is mounted at /vault
+      VAULT_PATH: /vault
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  nginx:
+    image: nginx:alpine
+    container_name: obsidian-mcp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/obsidian-mcp.conf:/etc/nginx/conf.d/obsidian-mcp.conf:ro
+      # Let's Encrypt certificates managed by certbot on the host
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/lib/letsencrypt:/var/lib/letsencrypt:ro
+    depends_on:
+      - mcp
