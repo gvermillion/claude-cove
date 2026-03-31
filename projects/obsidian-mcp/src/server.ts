@@ -52,6 +52,27 @@ export function createApp(): express.Application {
   // Parse JSON bodies for the MCP POST message endpoint
   app.use(express.json());
 
+  // ── OAuth discovery endpoints ─────────────────────────────────────────────
+  // Claude Code checks these before connecting. We don't implement OAuth —
+  // this server uses pre-shared Bearer tokens. Returning JSON (not HTML) lets
+  // Claude Code parse the response and fall back to the configured Bearer token.
+
+  app.get("/.well-known/oauth-authorization-server", (_req: Request, res: Response): void => {
+    res.status(200).json({
+      issuer: "https://vermillion.world",
+      response_types_supported: ["token"],
+      grant_types_supported: ["urn:ietf:params:oauth:grant-type:bearer"],
+    });
+  });
+
+  app.get("/.well-known/openid-configuration", (_req: Request, res: Response): void => {
+    res.status(404).json({ error: "not_supported" });
+  });
+
+  app.post("/register", (_req: Request, res: Response): void => {
+    res.status(405).json({ error: "dynamic_registration_not_supported" });
+  });
+
   // ── Health check ──────────────────────────────────────────────────────────
 
   /**
@@ -72,14 +93,14 @@ export function createApp(): express.Application {
     const authHeader = req.headers["authorization"];
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.status(401).json({ error: "Missing Authorization header. Expected: Bearer <token>" });
+      res.status(401).set("WWW-Authenticate", "Bearer").json({ error: "Missing Authorization header. Expected: Bearer <token>" });
       return;
     }
 
     const token = authHeader.slice("Bearer ".length).trim();
 
     if (token !== config.MCP_API_KEY) {
-      res.status(403).json({ error: "Invalid API key." });
+      res.status(401).set("WWW-Authenticate", "Bearer").json({ error: "Invalid API key." });
       return;
     }
 
