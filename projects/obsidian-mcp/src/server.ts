@@ -16,9 +16,11 @@
  */
 
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 import express, { type Request, type Response, type NextFunction } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { config } from "./config.js";
 import { handleReadNote, handleListFolder, handleGetDailyNote } from "./tools/read-tools.js";
@@ -32,6 +34,9 @@ import {
 
 /** Map from session ID to active SSE transport, for message routing. */
 const activeTransports = new Map<string, SSEServerTransport>();
+
+/** Map from session ID to active Streamable HTTP transport, for session reuse. */
+const httpSessions = new Map<string, StreamableHTTPServerTransport>();
 
 /**
  * Build and configure the Express application.
@@ -124,6 +129,69 @@ export function createApp(): express.Application {
     }
 
     await transport.handlePostMessage(req, res);
+  });
+
+  // ── Streamable HTTP transport (Claude Code / newer MCP clients) ───────────
+
+  /**
+   * Unified MCP endpoint using the Streamable HTTP transport.
+   *
+   * POST  /mcp — accept JSON-RPC requests; stream responses via SSE or JSON.
+   * GET   /mcp — re-attach to an existing session's event stream.
+   * DELETE /mcp — terminate a session.
+   *
+   * This is the modern MCP transport required by Claude Code. The legacy
+   * /sse + /messages endpoints remain for Gemini and ChatGPT compatibility.
+   */
+  app.post("/mcp", requireBearerAuth, async (req: Request, res: Response): Promise<void> => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    let transport: StreamableHTTPServerTransport;
+
+    if (sessionId && httpSessions.has(sessionId)) {
+      // Reuse existing session transport.
+      transport = httpSessions.get(sessionId)!;
+    } else {
+      // New session — create a fresh server + transport pair.
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (id) => {
+          httpSessions.set(id, transport);
+        },
+      });
+
+      transport.onclose = () => {
+        if (transport.sessionId) {
+          httpSessions.delete(transport.sessionId);
+        }
+      };
+
+      const server = buildMcpServer();
+      await server.connect(transport);
+    }
+
+    await transport.handleRequest(req, res, req.body);
+  });
+
+  app.get("/mcp", requireBearerAuth, async (req: Request, res: Response): Promise<void> => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
+    if (!sessionId || !httpSessions.has(sessionId)) {
+      res.status(404).json({ error: "Session not found." });
+      return;
+    }
+
+    await httpSessions.get(sessionId)!.handleRequest(req, res);
+  });
+
+  app.delete("/mcp", requireBearerAuth, async (req: Request, res: Response): Promise<void> => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
+    if (sessionId && httpSessions.has(sessionId)) {
+      await httpSessions.get(sessionId)!.close();
+      httpSessions.delete(sessionId);
+    }
+
+    res.status(204).send();
   });
 
   return app;
