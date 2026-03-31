@@ -91,7 +91,7 @@ export function createApp(): express.Application {
    */
   app.get("/sse", requireBearerAuth, async (req: Request, res: Response): Promise<void> => {
     const server = buildMcpServer();
-    const transport = new SSEServerTransport("/messages", res);
+    const transport = new SSEServerTransport(config.MESSAGES_ENDPOINT, res);
 
     activeTransports.set(transport.sessionId, transport);
 

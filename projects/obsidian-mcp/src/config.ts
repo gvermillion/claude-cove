@@ -29,10 +29,25 @@ const envSchema = z.object({
 
   /** Runtime environment; controls log verbosity and dev-only features. */
   NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
+
+  /**
+   * Public URL path prefix under which the server is mounted.
+   *
+   * When deployed at a sub-path (e.g. vermillion.world/mcp), nginx strips
+   * the prefix before proxying, so the server itself receives requests at
+   * /sse and /messages. However, the SSE transport must advertise the
+   * *public* messages URL back to clients, which includes this prefix.
+   *
+   * Set to "/mcp" for path-based deployments; leave empty for subdomain.
+   */
+  BASE_PATH: z.string().default(""),
 });
 
 /** Parsed and validated application configuration. */
-export type AppConfig = z.infer<typeof envSchema>;
+export type AppConfig = z.infer<typeof envSchema> & {
+  /** Fully-qualified public messages endpoint path (BASE_PATH + "/messages"). */
+  MESSAGES_ENDPOINT: string;
+};
 
 /**
  * Parse and validate environment variables.
@@ -53,7 +68,11 @@ function loadConfig(): AppConfig {
     throw new Error(`Invalid environment configuration:\n${formatted}`);
   }
 
-  return result.data;
+  const data = result.data;
+  return {
+    ...data,
+    MESSAGES_ENDPOINT: `${data.BASE_PATH}/messages`,
+  };
 }
 
 /** Singleton configuration instance loaded once at module import time. */
