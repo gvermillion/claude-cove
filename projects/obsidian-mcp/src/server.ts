@@ -19,6 +19,7 @@ import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { z } from "zod";
 import { config } from "./config.js";
 import { handleReadNote, handleListFolder, handleGetDailyNote } from "./tools/read-tools.js";
 import { handleCreateNote, handleUpdateNote, handleAppendToNote } from "./tools/write-tools.js";
@@ -27,15 +28,6 @@ import {
   handleGetBacklinks,
   handleGetTags,
   handleGetNotesByTag,
-} from "./tools/search-tools.js";
-import {
-  readToolDefinitions,
-} from "./tools/read-tools.js";
-import {
-  writeToolDefinitions,
-} from "./tools/write-tools.js";
-import {
-  searchToolDefinitions,
 } from "./tools/search-tools.js";
 
 /** Map from session ID to active SSE transport, for message routing. */
@@ -138,9 +130,11 @@ export function createApp(): express.Application {
 }
 
 /**
- * Construct an McpServer with all vault tools registered.
+ * Construct an McpServer with all vault tools registered using Zod schemas.
  *
  * Called once per SSE connection to create isolated session state.
+ * Uses `registerTool` with explicit Zod input schemas so the SDK can
+ * validate and type tool arguments before invoking handlers.
  *
  * @returns Configured McpServer ready to connect to a transport.
  */
@@ -150,65 +144,127 @@ function buildMcpServer(): McpServer {
     version: "0.1.0",
   });
 
-  const allToolDefinitions = [
-    ...readToolDefinitions,
-    ...writeToolDefinitions,
-    ...searchToolDefinitions,
-  ];
-
-  // Register all tools with their schemas and handlers
-  for (const tool of allToolDefinitions) {
-    server.tool(
-      tool.name,
-      tool.description,
-      tool.inputSchema.properties ?? {},
-      async (args: Record<string, unknown>) => {
-        return await dispatchToolCall(tool.name, args);
-      },
-    );
-  }
-
-  return server;
-}
-
-/**
- * Dispatch an MCP tool call to the appropriate handler function.
- *
- * @param toolName - The registered tool name.
- * @param args - Validated arguments from the MCP SDK.
- * @returns The tool result content array.
- * @throws {Error} If the tool name is not recognised.
- */
-async function dispatchToolCall(
-  toolName: string,
-  args: Record<string, unknown>,
-): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const vaultPath = config.VAULT_PATH;
 
-  switch (toolName) {
-    case "read_note":
-      return handleReadNote(vaultPath, args);
-    case "list_folder":
-      return handleListFolder(vaultPath, args);
-    case "get_daily_note":
-      return handleGetDailyNote(vaultPath, args);
-    case "create_note":
-      return handleCreateNote(vaultPath, args);
-    case "update_note":
-      return handleUpdateNote(vaultPath, args);
-    case "append_to_note":
-      return handleAppendToNote(vaultPath, args);
-    case "search_vault":
-      return handleSearchVault(vaultPath, args);
-    case "get_backlinks":
-      return handleGetBacklinks(vaultPath, args);
-    case "get_tags":
-      return handleGetTags(vaultPath, args);
-    case "get_notes_by_tag":
-      return handleGetNotesByTag(vaultPath, args);
-    default:
-      throw new Error(`Unknown tool: ${toolName}`);
-  }
+  // ── Read tools ──────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "read_note",
+    {
+      description: "Read a single Obsidian note by its vault-relative path. Returns the full markdown content and parsed YAML frontmatter.",
+      inputSchema: { path: z.string().min(1).describe("Vault-relative path to the note (e.g. 'Projects/alpha.md'). The .md extension is optional.") },
+    },
+    async (args) => handleReadNote(vaultPath, args),
+  );
+
+  server.registerTool(
+    "list_folder",
+    {
+      description: "List all markdown notes in a vault folder. Returns vault-relative paths. Pass an empty string or '.' to list the vault root. Not recursive.",
+      inputSchema: { folder: z.string().default("").describe("Vault-relative folder path to list. Use '' or '.' for the vault root.") },
+    },
+    async (args) => handleListFolder(vaultPath, args),
+  );
+
+  server.registerTool(
+    "get_daily_note",
+    {
+      description: "Get today's daily note from the vault (daily/YYYY-MM-DD.md). Optionally creates it from a default template if it does not exist.",
+      inputSchema: {
+        create_if_missing: z.boolean().default(false).describe("If true, create today's daily note when it does not exist."),
+      },
+    },
+    async (args) => handleGetDailyNote(vaultPath, args),
+  );
+
+  // ── Write tools ─────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "create_note",
+    {
+      description: "Create a new Obsidian note. Fails if a note already exists at that path. Parent directories are created automatically.",
+      inputSchema: {
+        path: z.string().min(1).describe("Vault-relative path for the new note (e.g. 'Projects/alpha.md')."),
+        content: z.string().describe("Markdown body text for the note."),
+        frontmatter: z.record(z.unknown()).optional().describe("Optional YAML frontmatter fields as a JSON object."),
+      },
+    },
+    async (args) => handleCreateNote(vaultPath, args),
+  );
+
+  server.registerTool(
+    "update_note",
+    {
+      description: "Replace the entire content of an existing Obsidian note. The note must already exist. WARNING: Overwrites the full file.",
+      inputSchema: {
+        path: z.string().min(1).describe("Vault-relative path of the note to update."),
+        content: z.string().describe("New markdown body text. Replaces the entire existing content."),
+        frontmatter: z.record(z.unknown()).optional().describe("Optional frontmatter. If omitted the existing frontmatter is NOT preserved."),
+      },
+    },
+    async (args) => handleUpdateNote(vaultPath, args),
+  );
+
+  server.registerTool(
+    "append_to_note",
+    {
+      description: "Append text to the end of an existing note without replacing existing content. Ideal for journaling and logging.",
+      inputSchema: {
+        path: z.string().min(1).describe("Vault-relative path of the note to append to."),
+        content: z.string().min(1).describe("Text to append. A newline separator is added automatically."),
+      },
+    },
+    async (args) => handleAppendToNote(vaultPath, args),
+  );
+
+  // ── Search tools ─────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "search_vault",
+    {
+      description: "Full-text search across all markdown notes. Uses ripgrep for fast results. Returns matching lines with file path, line number, and text snippet.",
+      inputSchema: {
+        query: z.string().min(1).describe("Text or regex pattern to search for."),
+        folder: z.string().optional().describe("Restrict search to this vault-relative folder. Omit to search entire vault."),
+        max_results: z.number().int().min(1).max(200).default(50).describe("Maximum number of matches to return (1–200). Defaults to 50."),
+        case_insensitive: z.boolean().default(true).describe("Whether the search should ignore case. Defaults to true."),
+      },
+    },
+    async (args) => handleSearchVault(vaultPath, args),
+  );
+
+  server.registerTool(
+    "get_backlinks",
+    {
+      description: "Find all notes that contain a [[wikilink]] pointing to a given note. Useful for understanding which notes reference a concept or project.",
+      inputSchema: {
+        path: z.string().min(1).describe("Vault-relative path of the note to find backlinks for (e.g. 'Projects/alpha.md')."),
+      },
+    },
+    async (args) => handleGetBacklinks(vaultPath, args),
+  );
+
+  server.registerTool(
+    "get_tags",
+    {
+      description: "List all unique tags used across the vault, collected from YAML frontmatter. Returns tags in alphabetical order.",
+      inputSchema: {},
+    },
+    async (args) => handleGetTags(vaultPath, args),
+  );
+
+  server.registerTool(
+    "get_notes_by_tag",
+    {
+      description: "Find all notes that have a specific tag in their YAML frontmatter. Tag matching is case-insensitive.",
+      inputSchema: {
+        tag: z.string().min(1).describe("Tag to filter by (without the '#' prefix)."),
+      },
+    },
+    async (args) => handleGetNotesByTag(vaultPath, args),
+  );
+
+  return server;
 }
 
 /**

@@ -12,8 +12,6 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { resolve } from "path";
 
-const execFileAsync = promisify(execFile);
-
 /** A single match returned by a vault search. */
 export interface SearchMatch {
   /** Vault-relative path of the file containing the match. */
@@ -124,6 +122,9 @@ async function searchWithRipgrep(
 
   args.push(query, searchRoot);
 
+  // Promisify lazily so that vi.mock("child_process") is in place before the
+  // wrapper is created, enabling reliable test mocking.
+  const execFileAsync = promisify(execFile);
   const { stdout } = await execFileAsync("rg", args, { maxBuffer: 4 * 1024 * 1024 });
 
   const matches = parseRipgrepOutput(stdout, vaultPath);
@@ -141,11 +142,13 @@ async function searchWithRipgrep(
  *
  * Each output line has the format: `path/to/file.md:lineNum:content`
  *
+ * Exported for unit testing of the parsing logic in isolation.
+ *
  * @param output - Raw stdout string from ripgrep.
  * @param vaultPath - Absolute vault root for computing relative paths.
  * @returns Array of parsed matches.
  */
-function parseRipgrepOutput(output: string, vaultPath: string): SearchMatch[] {
+export function parseRipgrepOutput(output: string, vaultPath: string): SearchMatch[] {
   const lines = output.split("\n").filter((line) => line.trim() !== "");
   const resolvedVault = resolve(vaultPath);
   const matches: SearchMatch[] = [];

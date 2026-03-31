@@ -22,17 +22,5 @@ services:
       retries: 3
       start_period: 15s
 
-  nginx:
-    image: nginx:alpine
-    container_name: obsidian-mcp-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/obsidian-mcp.conf:/etc/nginx/conf.d/obsidian-mcp.conf:ro
-      # Let's Encrypt certificates managed by certbot on the host
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/lib/letsencrypt:/var/lib/letsencrypt:ro
-    depends_on:
-      - mcp
+  # nginx is managed on the host — see nginx/obsidian-mcp.conf for the site config.
+  # Copy that file to /etc/nginx/sites-available/ and symlink to sites-enabled/.
