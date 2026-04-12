@@ -90,6 +90,24 @@ class RelayConfig(BaseSettings):
     proton: ProtonConfig = ProtonConfig()
 
 
+class OllamaConfig(BaseSettings):
+    """Configuration for the local Ollama LLM server (second cascade stage).
+
+    Attributes:
+        enabled: Whether Ollama is used as a cascade stage.
+        base_url: Ollama API server URL. Must be reachable from the VPS.
+        model: Ollama model tag to use, e.g. "llama3.2:3b", "mistral:7b".
+        timeout_seconds: Per-request inference timeout.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="AGENT__OLLAMA__", extra="ignore")
+
+    enabled: bool = False
+    base_url: str = "http://localhost:11434"
+    model: str = "llama3.2:3b"
+    timeout_seconds: float = 60.0
+
+
 class AgentConfig(BaseSettings):
     """Configuration for the triage agent process.
 
@@ -102,10 +120,17 @@ class AgentConfig(BaseSettings):
         done_dir: Directory for successfully processed .gpg files.
         failed_dir: Directory for .gpg files that failed processing.
         processing_timeout_seconds: Max seconds allowed for one email.
+        analyzer_backend: Controls which analyzer chain is used.
+            "claude"   — ClaudeTriageClient only (original behaviour).
+            "cascade"  — RuleBasedTriageClient → OllamaTriageClient
+                         → ClaudeTriageClient (recommended for production).
+            "ollama"   — OllamaTriageClient only (no Claude, no cost).
+            "rules"    — RuleBasedTriageClient only (fastest, limited coverage).
         claude_model: Claude model ID to use for triage analysis.
         claude_max_tokens: Maximum output tokens per Claude call.
         claude_temperature: Sampling temperature (0.0 = deterministic).
-        max_concurrent_emails: Semaphore limit for concurrent Claude calls.
+        max_concurrent_emails: Semaphore limit for concurrent analyzer calls.
+        ollama: Nested Ollama server configuration.
         webhook_url: Optional URL for CRITICAL/HIGH priority notifications.
         webhook_secret: HMAC-SHA256 secret for webhook signature header.
     """
@@ -120,10 +145,14 @@ class AgentConfig(BaseSettings):
     failed_dir: Path = Path("/var/lib/email-triage/failed")
     processing_timeout_seconds: int = 120
 
+    analyzer_backend: str = "claude"
+
     claude_model: str = "claude-opus-4-6"
     claude_max_tokens: int = 1024
     claude_temperature: float = 0.0
     max_concurrent_emails: int = 3
+
+    ollama: OllamaConfig = OllamaConfig()
 
     webhook_url: HttpUrl | None = None
     webhook_secret: SecretStr | None = None

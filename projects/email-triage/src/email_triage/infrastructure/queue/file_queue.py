@@ -36,6 +36,45 @@ _GPG_SUFFIX = ".gpg"
 _PROCESSING_SUFFIX = ".gpg.processing"
 
 
+def _warn_if_not_tmpfs(path: Path) -> None:
+    """Log a security warning if the queue directory is not on a tmpfs mount.
+
+    Reads /proc/mounts to determine the filesystem type for the given path.
+    This is advisory only — non-tmpfs queues work but may persist plaintext
+    ciphertext to physical storage longer than intended.
+
+    Args:
+        path: Directory path to check.
+    """
+    try:
+        resolved = str(path.resolve())
+        with open("/proc/mounts") as mounts_file:
+            # Walk mounts in reverse to find the longest matching prefix
+            # (most specific mount point for the given path).
+            best_match: tuple[int, str] = (0, "")
+            for line in mounts_file:
+                parts = line.split()
+                if len(parts) < 3:
+                    continue
+                mount_point, fs_type = parts[1], parts[2]
+                if resolved.startswith(mount_point) and len(mount_point) >= best_match[0]:
+                    best_match = (len(mount_point), fs_type)
+
+            if best_match[1] and best_match[1] != "tmpfs":
+                log.warning(
+                    "queue_dir_not_tmpfs",
+                    queue_dir=str(path),
+                    filesystem=best_match[1],
+                    advice=(
+                        "Encrypted queue files will persist to disk. "
+                        "Mount the queue directory as tmpfs to prevent this."
+                    ),
+                )
+    except OSError:
+        # /proc/mounts unavailable (e.g., non-Linux). Skip the check silently.
+        pass
+
+
 class FileQueue:
     """Writes encrypted email files to a tmpfs directory atomically.
 
@@ -59,6 +98,7 @@ class FileQueue:
                 and be writable by the relay process user.
         """
         self._queue_dir = queue_dir
+        _warn_if_not_tmpfs(queue_dir)
         log.info("file_queue_ready", queue_dir=str(queue_dir))
 
     def enqueue(self, email: EncryptedEmail) -> Path:

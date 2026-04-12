@@ -12,6 +12,9 @@ Exports:
 from __future__ import annotations
 
 import logging
+import os
+import re
+import stat
 from pathlib import Path
 
 import gnupg
@@ -20,6 +23,9 @@ import structlog
 from email_triage.domain.exceptions import DecryptionError, EncryptionError
 
 log: structlog.BoundLogger = structlog.get_logger(__name__)
+
+# A valid GPG fingerprint is exactly 40 uppercase hex characters.
+_FINGERPRINT_RE = re.compile(r"^[0-9A-F]{40}$")
 
 
 class GPGEncryptor:
@@ -46,15 +52,23 @@ class GPGEncryptor:
         Raises:
             EncryptionError: If the recipient key is not found in gpg_home.
         """
+        # Validate fingerprint format before any GPG interaction.
+        normalised = recipient_fingerprint.upper().replace(" ", "")
+        if not _FINGERPRINT_RE.match(normalised):
+            raise EncryptionError(
+                f"Invalid GPG fingerprint format: {recipient_fingerprint!r}. "
+                "Expected 40 uppercase hex characters."
+            )
+
         self._gpg = gnupg.GPG(gnupghome=str(gpg_home))
-        self._recipient_fingerprint = recipient_fingerprint
+        self._recipient_fingerprint = normalised
 
         # Validate key presence at startup rather than at first encrypt call.
         keys = self._gpg.list_keys()
         fingerprints = [k["fingerprint"] for k in keys]
-        if recipient_fingerprint not in fingerprints:
+        if normalised not in fingerprints:
             raise EncryptionError(
-                f"Recipient key {recipient_fingerprint} not found in {gpg_home}. "
+                f"Recipient key not found in {gpg_home}. "
                 "Import the public key before starting the relay."
             )
 
@@ -89,9 +103,11 @@ class GPGEncryptor:
         )
 
         if not result.ok:
+            # Truncate and sanitize stderr — it may contain key metadata.
+            safe_stderr = (result.stderr or "").strip()[:200]
             raise EncryptionError(
                 f"GPG encryption failed: {result.status!r}. "
-                f"Stderr: {result.stderr.strip()}"
+                f"Stderr (truncated): {safe_stderr}"
             )
 
         log.debug("gpg_encrypt_success", ciphertext_size_bytes=len(result.data))
@@ -129,6 +145,9 @@ class GPGDecryptor:
                 private key is not found in gpg_home.
         """
         self._gpg = gnupg.GPG(gnupghome=str(gpg_home))
+
+        # Refuse to load a passphrase from a world-readable or group-readable file.
+        _assert_passphrase_file_permissions(passphrase_file)
 
         try:
             self._passphrase: str = passphrase_file.read_text().strip()
@@ -186,6 +205,32 @@ class GPGDecryptor:
             plaintext_size_bytes=len(plaintext),
         )
         return plaintext
+
+
+def _assert_passphrase_file_permissions(path: Path) -> None:
+    """Raise DecryptionError if the passphrase file is accessible to non-owners.
+
+    A passphrase file must have mode 0400 or 0600 at most. Any group or world
+    read/write/execute bits are rejected.
+
+    Args:
+        path: Path to the passphrase file.
+
+    Raises:
+        DecryptionError: If the file permissions are too permissive.
+    """
+    try:
+        file_stat = os.stat(path)
+    except OSError as exc:
+        raise DecryptionError(f"Cannot stat passphrase file {path}: {exc}") from exc
+
+    mode = stat.S_IMODE(file_stat.st_mode)
+    # Bits 0o077 cover group and other read/write/execute.
+    if mode & 0o077:
+        raise DecryptionError(
+            f"Passphrase file {path} has unsafe permissions (mode {oct(mode)}). "
+            "Set permissions to 0400: chmod 0400 " + str(path)
+        )
 
 
 def configure_gpg_logging() -> None:
