@@ -1,0 +1,45 @@
+[Unit]
+Description=Email Triage Agent — decrypt, analyse with Claude, route
+Documentation=https://github.com/gvermillion/claude-cove
+After=network-online.target email-triage-relay.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=email-agent
+Group=email-agent
+WorkingDirectory=/opt/email-triage
+
+ExecStart=/opt/email-triage/.venv/bin/email-triage-agent --config /etc/email-triage/agent.env
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=email-triage-agent
+
+# Allow time for Claude API calls and in-flight email processing to finish.
+TimeoutStopSec=60
+KillMode=process
+
+# ---- Security hardening ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+CapabilityBoundingSet=
+
+# Allow writes to queue (consume), state, done, and failed directories.
+# The passphrase file is read-only to the agent.
+ReadOnlyPaths=/etc/email-triage/agent-key.passphrase
+ReadWritePaths=/run/email-triage/queue /var/lib/email-triage/agent /var/lib/email-triage/done /var/lib/email-triage/failed
+
+[Install]
+WantedBy=multi-user.target
