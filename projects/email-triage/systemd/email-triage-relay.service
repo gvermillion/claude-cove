@@ -1,0 +1,43 @@
+[Unit]
+Description=Email Triage Relay — poll IMAP, GPG-encrypt, enqueue
+Documentation=https://github.com/gvermillion/claude-cove
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=email-relay
+Group=email-relay
+WorkingDirectory=/opt/email-triage
+
+ExecStart=/opt/email-triage/.venv/bin/email-triage-relay --config /etc/email-triage/relay.env
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=email-triage-relay
+
+# Graceful shutdown — allow up to 30s for the current poll cycle to finish.
+TimeoutStopSec=30
+KillMode=process
+
+# ---- Security hardening ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+CapabilityBoundingSet=
+
+# Allow writes only to the queue (tmpfs) and relay state directories.
+ReadWritePaths=/run/email-triage/queue /var/lib/email-triage/relay
+
+[Install]
+WantedBy=multi-user.target
