@@ -1,0 +1,83 @@
+{
+  "name": "Granola Meeting Ingest",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/granola-sync",
+        "events": ["create"],
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Watch Granola Folder",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $json.path }}",
+        "options": {}
+      },
+      "id": "read-file",
+      "name": "Read Transcript",
+      "type": "n8n-nodes-base.readBinaryFiles",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://agent-host:8000/ingest/meeting",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "transcript",
+              "value": "={{ Buffer.from($binary.data.data, 'base64').toString('utf-8') }}"
+            },
+            {
+              "name": "filename",
+              "value": "={{ $('Watch Granola Folder').item.json.name }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "call-agent",
+      "name": "Send to Agent Host",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.statusCode }}",
+              "operation": "isNot",
+              "value2": "200"
+            }
+          ]
+        }
+      },
+      "id": "error-check",
+      "name": "Check Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Watch Granola Folder": {
+      "main": [[ { "node": "Read Transcript", "type": "main", "index": 0 } ]]
+    },
+    "Read Transcript": {
+      "main": [[ { "node": "Send to Agent Host", "type": "main", "index": 0 } ]]
+    },
+    "Send to Agent Host": {
+      "main": [[ { "node": "Check Response", "type": "main", "index": 0 } ]]
+    }
+  }
+}
