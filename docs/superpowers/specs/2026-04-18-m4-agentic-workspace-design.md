@@ -232,7 +232,10 @@ After all agents complete:
 
 ---
 
-## 5. Reporting Engine (post-MVP, designed now)
+## 5. Reporting Engine
+
+> **Post-MVP — designed now for continuity, not implemented in the first release.**
+> Agents executing the implementation plan must skip this section.
 
 | Cadence | n8n trigger | Agent action |
 |---|---|---|
@@ -307,7 +310,7 @@ OLLAMA_REASONING_MODEL=qwen2.5:32b
 
 # Vault
 OBSIDIAN_MCP_URL=http://obsidian-mcp:3001   # override for VPS
-OBSIDIAN_MCP_TOKEN=<bearer-token>
+MCP_API_KEY=<bearer-token>                  # matches obsidian-mcp/src/config.ts
 VAULT_PATH=./vault                           # bind-mounted into obsidian-mcp at /vault; obsidian-mcp reads from /vault internally
 
 # Granola
@@ -387,7 +390,7 @@ Annotates which Claude model to use for each class of task in this project, bala
 |---|---|---|---|
 | **Haiku** | `claude-haiku-4-5-20251001` | Boilerplate, file scaffolding, schema validation, simple transforms | Complex reasoning, multi-file architecture decisions |
 | **Sonnet** | `claude-sonnet-4-6` | Code implementation, debugging, agent prompt engineering, integration wiring | Trivial tasks (overkill), deep architectural trade-off analysis |
-| **Opus** | `claude-opus-4-7` | Architecture decisions, spec writing, complex multi-step planning, prompt design for agents | Routine implementation (expensive) |
+| **Opus** | `claude-opus-4-6` | Architecture decisions, spec writing, complex multi-step planning, prompt design for agents | Routine implementation (expensive) |
 
 ### Effort size labels
 

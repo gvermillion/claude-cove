@@ -102,18 +102,19 @@ cd projects/m4-agentic-workspace
 
 ```
 .env
-vault/private/
 *.pyc
 __pycache__/
 .venv/
 ```
+
+> **Note:** `vault/private/` must NOT be in `.gitignore`. It is tracked by git and encrypted by git-crypt. Adding it to `.gitignore` would prevent tracking and silently break encryption.
 
 - [ ] **Step 3: Write `docker-compose.yml`**
 
 ```yaml
 services:
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:1.88.0
     ports:
       - "5678:5678"
     environment:
@@ -130,7 +131,7 @@ services:
       - agentic
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.14.0
     ports:
       - "6333:6333"
     volumes:
@@ -139,7 +140,7 @@ services:
       - agentic
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.6.5
     ports:
       - "3000:8080"
     environment:
@@ -178,6 +179,8 @@ services:
       - OLLAMA_REASONING_MODEL=${OLLAMA_REASONING_MODEL:-qwen2.5:32b}
       - VAULT_PATH=/vault
       - QDRANT_URL=http://qdrant:6333
+      - OBSIDIAN_MCP_URL=${OBSIDIAN_MCP_URL:-http://obsidian-mcp:3001}
+      - MCP_API_KEY=${MCP_API_KEY}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./vault:/vault
