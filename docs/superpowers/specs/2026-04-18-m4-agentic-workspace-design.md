@@ -7,6 +7,37 @@
 
 ---
 
+## 0. Agent Developer Preamble
+
+> **This section is addressed to the AI agent executing the implementation plan.**
+
+### Workflow
+
+You MUST use the `superpowers:subagent-driven-development` skill before writing any code. That skill defines how to decompose this plan into parallel workstreams dispatched to subagents. Do not begin implementation until you have invoked it.
+
+### Model discipline
+
+Every task in the implementation plan carries a `[Model | Effort]` label (e.g. `[Sonnet | M]`). You must honor these assignments:
+
+- **Haiku** — invoke for the labeled task without escalating. Haiku is sufficient; escalating wastes tokens.
+- **Sonnet** — the default implementation model. Use it as-is.
+- **Opus** — invoke only for the labeled tasks. Do not use Opus elsewhere; it is reserved for tasks where output quality directly determines system behavior (agent prompts, vault constitution, architecture calls).
+
+When dispatching subagents, pass the model assignment explicitly in the subagent prompt. A subagent that does not know its assigned model will default to Sonnet — acceptable, but Haiku tasks should be called out to keep costs low.
+
+### Subagent isolation rules
+
+- Each subagent owns exactly one task or one tightly coupled group of files.
+- Subagents must not read or write files outside their assigned scope.
+- All vault writes during development go to `vault/` (the local bind mount) — never to the live VPS.
+- Subagents that scaffold infrastructure (Docker, scripts) run before subagents that implement application code. Respect this ordering.
+
+### Verification before completion
+
+Before marking any task complete, invoke `superpowers:verification-before-completion`. Do not self-certify.
+
+---
+
 ## 1. Goals
 
 Transition from reactive AI usage to a proactive local background daemon that:
