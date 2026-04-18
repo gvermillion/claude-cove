@@ -3,6 +3,8 @@ services:
     image: n8nio/n8n:1.88.0
     ports:
       - "5678:5678"
+    depends_on:
+      - agent-host
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
@@ -65,7 +67,7 @@ services:
       - OLLAMA_REASONING_MODEL=${OLLAMA_REASONING_MODEL:-qwen2.5:32b}
       - VAULT_PATH=/vault
       - QDRANT_URL=http://qdrant:6333
-      - OBSIDIAN_MCP_URL=${OBSIDIAN_MCP_URL:-http://obsidian-mcp:3001}
+      - OBSIDIAN_MCP_URL=${OBSIDIAN_MCP_URL:-http://obsidian-mcp:3000}
       - MCP_API_KEY=${MCP_API_KEY}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
