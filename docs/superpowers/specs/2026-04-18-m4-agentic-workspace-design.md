@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-18
 **Status:** Approved for implementation
-**Scope:** Inference layer + Obsidian vault + Granola meeting pipeline
+**Scope:** Inference layer + Obsidian vault + Granola meeting pipeline + Skill layer
 **Out of scope (later):** Email triage integration, voice interface, enterprise federation
 
 ---
@@ -358,23 +358,38 @@ Annotates which Claude model to use for each class of task in this project, bala
 | **Sonnet** | `claude-sonnet-4-6` | Code implementation, debugging, agent prompt engineering, integration wiring | Trivial tasks (overkill), deep architectural trade-off analysis |
 | **Opus** | `claude-opus-4-7` | Architecture decisions, spec writing, complex multi-step planning, prompt design for agents | Routine implementation (expensive) |
 
+### Effort size labels
+
+Used in the implementation plan to signal expected token spend per task.
+
+| Size | Token budget | Meaning |
+|---|---|---|
+| XS | < 2K | Single file, < 50 lines, no judgment calls |
+| S | 2–8K | Single component, clear spec, minimal decisions |
+| M | 8–20K | Multi-file, some design judgment required |
+| L | 20–50K | Cross-cutting, multiple components, integration points |
+| XL | > 50K | Full subsystem, significant architecture |
+
 ### Task-level model assignments (implementation plan)
 
-| Task category | Recommended model | Rationale |
-|---|---|---|
-| Scaffold `docker-compose.yml` + Dockerfiles | Haiku | Mechanical, pattern-based, well-defined output |
-| Write vault init script + constitution | Sonnet | Requires judgment on schema design |
-| Implement `agent-host` FastAPI routes | Sonnet | Standard implementation, known patterns |
-| Design PydanticAI agent schemas | Sonnet | Schema design needs precision, not deep reasoning |
-| Write agent system prompts | Opus | Prompt quality directly impacts extraction quality |
-| Wire n8n workflows (JSON config) | Haiku | JSON transformation, no reasoning needed |
-| Implement Qdrant embedding + retrieval | Sonnet | Standard RAG pattern, some judgment on chunking |
-| Write onboarding skill | Sonnet | Instructional writing + error handling paths |
-| Write operational skills (vault-capture, etc.) | Haiku | Short, templated instruction files |
-| Debug agent extraction quality | Opus | Requires understanding failure modes and prompt repair |
-| Write tests | Sonnet | Standard pytest patterns, some judgment on coverage |
+| Task | Model | Effort | Rationale |
+|---|---|---|---|
+| Scaffold `docker-compose.yml` + Dockerfiles | Haiku | S | Mechanical, pattern-based, well-defined output |
+| Write `.env.example` + env wiring | Haiku | XS | Pure boilerplate |
+| Write `scripts/init-vault.sh` | Sonnet | S | Vault scaffolding + git-crypt setup requires judgment |
+| Write `_system/CLAUDE.md` constitution | Opus | S | Defines agent behavior; quality determines system correctness |
+| Implement `agent-host` FastAPI skeleton | Sonnet | M | Standard patterns, multi-file |
+| Design PydanticAI schemas (`MeetingSignals` etc.) | Sonnet | S | Schema precision matters, clear spec |
+| Write agent system prompts | Opus | M | Prompt quality directly determines extraction quality |
+| Implement coordinator (gather + sequential writes) | Sonnet | M | Async concurrency + sequencing logic |
+| Wire n8n workflows (JSON export) | Haiku | S | JSON config, no reasoning |
+| Implement Qdrant embedding + retrieval | Sonnet | M | Standard RAG, some judgment on chunking strategy |
+| Write onboarding skill | Sonnet | M | Instructional writing + branching error paths |
+| Write operational skills (vault-capture, search, etc.) | Haiku | XS–S each | Short templated instruction files |
+| Write unit + integration tests | Sonnet | L | Multi-file, covers agents + API + vault writes |
+| Debug / tune agent extraction quality | Opus | M–L | Failure mode analysis + prompt repair |
 
-**Token optimization rule:** default to Sonnet. Step down to Haiku for pure scaffolding/boilerplate. Step up to Opus only for prompt engineering and architectural decisions where quality directly determines system behavior.
+**Token optimization rule:** default to Sonnet. Step down to Haiku for pure scaffolding. Step up to Opus only when output quality directly determines system behavior (prompts, constitution, architecture calls).
 
 ---
 
