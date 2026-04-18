@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
+
 from m4_agent_host.application.ingest_service import IngestService, _make_slug, _parse_date
-from m4_agent_host.domain.models import (
-    Entity, MeetingIngestRequest, MeetingSignals, Task
-)
+from m4_agent_host.domain.models import MeetingIngestRequest, MeetingSignals
 from m4_agent_host.infrastructure.vault.writer import VaultWriter
 
 
@@ -33,6 +34,7 @@ def test_parse_date_returns_none_for_invalid() -> None:
 
 def test_parse_date_parses_iso() -> None:
     from datetime import date
+
     result = _parse_date("2024-01-15")
     assert result == date(2024, 1, 15)
 
@@ -42,11 +44,13 @@ async def test_ingest_meeting_writes_raw_transcript(service: IngestService, vaul
     mock_result = MagicMock()
     mock_result.output = []  # pydantic-ai 1.x uses .output
 
-    with patch("m4_agent_host.application.ingest_service.entity_agent") as ea, \
-         patch("m4_agent_host.application.ingest_service.risk_agent") as ra, \
-         patch("m4_agent_host.application.ingest_service.opportunity_agent") as oa, \
-         patch("m4_agent_host.application.ingest_service.task_agent") as ta, \
-         patch("m4_agent_host.application.ingest_service.commit_vault"):
+    with (
+        patch("m4_agent_host.application.ingest_service.entity_agent") as ea,
+        patch("m4_agent_host.application.ingest_service.risk_agent") as ra,
+        patch("m4_agent_host.application.ingest_service.opportunity_agent") as oa,
+        patch("m4_agent_host.application.ingest_service.task_agent") as ta,
+        patch("m4_agent_host.application.ingest_service.commit_vault"),
+    ):
         for agent in [ea, ra, oa, ta]:
             agent.run = AsyncMock(return_value=mock_result)
 
@@ -64,11 +68,13 @@ async def test_ingest_meeting_handles_agent_exception_gracefully(
     mock_result = MagicMock()
     mock_result.output = []  # pydantic-ai 1.x uses .output
 
-    with patch("m4_agent_host.application.ingest_service.entity_agent") as ea, \
-         patch("m4_agent_host.application.ingest_service.risk_agent") as ra, \
-         patch("m4_agent_host.application.ingest_service.opportunity_agent") as oa, \
-         patch("m4_agent_host.application.ingest_service.task_agent") as ta, \
-         patch("m4_agent_host.application.ingest_service.commit_vault"):
+    with (
+        patch("m4_agent_host.application.ingest_service.entity_agent") as ea,
+        patch("m4_agent_host.application.ingest_service.risk_agent") as ra,
+        patch("m4_agent_host.application.ingest_service.opportunity_agent") as oa,
+        patch("m4_agent_host.application.ingest_service.task_agent") as ta,
+        patch("m4_agent_host.application.ingest_service.commit_vault"),
+    ):
         ea.run = AsyncMock(side_effect=RuntimeError("Ollama down"))
         for agent in [ra, oa, ta]:
             agent.run = AsyncMock(return_value=mock_result)

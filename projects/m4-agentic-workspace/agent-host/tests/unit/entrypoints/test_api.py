@@ -1,13 +1,17 @@
 from __future__ import annotations
-from unittest.mock import AsyncMock, patch, MagicMock
+
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
+
 from m4_agent_host.domain.models import MeetingSignals
 
 
 @pytest.fixture()
 def client() -> TestClient:
     from m4_agent_host.entrypoints.api import app
+
     return TestClient(app)
 
 
@@ -57,4 +61,4 @@ def test_ingest_meeting_returns_500_on_error(client: TestClient) -> None:
 
     # Assert
     assert response.status_code == 500
-    assert "service failure" in response.json()["detail"]
+    assert response.json()["detail"] == "Ingest failed"

@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 import re
-from datetime import UTC, datetime, date
+from datetime import UTC, date, datetime
 from pathlib import Path
+
 import frontmatter
+
 from m4_agent_host.config import settings
-from m4_agent_host.domain.models import Entity, Risk, Opportunity, Task
+from m4_agent_host.domain.models import Entity, Opportunity, Risk, Task
 
 
 class VaultWriter:
@@ -74,14 +77,10 @@ class VaultWriter:
         path.parent.mkdir(parents=True, exist_ok=True)
         header = "# Opportunities\n\n" if not path.exists() else ""
         existing = path.read_text(encoding="utf-8") if path.exists() else ""
-        additions = "\n".join(
-            f"- [{opp.type}] {opp.description}" for opp in opportunities
-        )
+        additions = "\n".join(f"- [{opp.type}] {opp.description}" for opp in opportunities)
         path.write_text(header + existing + additions + "\n", encoding="utf-8")
 
-    def append_tasks_to_daily(
-        self, tasks: list[Task], for_date: date | None = None
-    ) -> None:
+    def append_tasks_to_daily(self, tasks: list[Task], for_date: date | None = None) -> None:
         """Append tasks to the daily journal note for for_date."""
         if not tasks:
             return
@@ -96,9 +95,7 @@ class VaultWriter:
             + (f" — {t.eta}" if t.eta else "")
             for t in tasks
         )
-        path.write_text(
-            header + existing + f"\n## Tasks\n{lines}\n", encoding="utf-8"
-        )
+        path.write_text(header + existing + f"\n## Tasks\n{lines}\n", encoding="utf-8")
 
     def append_log(self, agent: str, action: str, target: str) -> None:
         """Append one structured line to _system/log.md."""

@@ -3,12 +3,15 @@
 Four agents run in parallel on the same transcript, each enforcing a
 typed schema. All use gemma3:9b (fast, parallel-safe on M4).
 """
+
 from __future__ import annotations
+
 from pydantic_ai import Agent
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.providers.ollama import OllamaProvider
+
 from m4_agent_host.config import settings
-from m4_agent_host.domain.models import Entity, Risk, Opportunity, Task
+from m4_agent_host.domain.models import Entity, Opportunity, Risk, Task
 
 _triage_model = OllamaModel(
     model_name=settings.ollama_triage_model,

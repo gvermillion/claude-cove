@@ -1,10 +1,15 @@
 from __future__ import annotations
+
+import structlog
 from fastapi import FastAPI, HTTPException
+
 from m4_agent_host.application.ingest_service import IngestService
 from m4_agent_host.domain.models import MeetingIngestRequest, MeetingSignals
 from m4_agent_host.entrypoints.logging_setup import configure_logging
 
 configure_logging()
+log = structlog.get_logger(__name__)
+
 app = FastAPI(title="M4 Agent Host", version="0.1.0")
 _ingest_service = IngestService()
 
@@ -19,9 +24,11 @@ async def ingest_meeting(req: MeetingIngestRequest) -> MeetingSignals:
     try:
         return await _ingest_service.ingest_meeting(req)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        log.error("ingest_meeting_failed", error=str(exc), exc_info=True)
+        raise HTTPException(status_code=500, detail="Ingest failed") from exc
 
 
 def main() -> None:
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104

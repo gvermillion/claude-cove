@@ -3,18 +3,25 @@
 Orchestrates parallel agent execution then sequentially writes results
 to the vault to avoid race conditions on shared files.
 """
+
 from __future__ import annotations
+
 import asyncio
 import re
-from datetime import UTC, datetime, date
+from datetime import date, datetime
 from pathlib import Path
+
 import structlog
+
 from m4_agent_host.domain.models import MeetingIngestRequest, MeetingSignals
 from m4_agent_host.infrastructure.ai.agents import (
-    entity_agent, risk_agent, opportunity_agent, task_agent,
+    entity_agent,
+    opportunity_agent,
+    risk_agent,
+    task_agent,
 )
-from m4_agent_host.infrastructure.vault.writer import VaultWriter
 from m4_agent_host.infrastructure.vault.git_helper import commit_vault
+from m4_agent_host.infrastructure.vault.writer import VaultWriter
 
 log = structlog.get_logger(__name__)
 
@@ -54,11 +61,11 @@ class IngestService:
             return_exceptions=True,
         )
 
-        # pydantic-ai 1.x: result accessor is .output
-        entities = results[0].output if not isinstance(results[0], Exception) else []
-        risks = results[1].output if not isinstance(results[1], Exception) else []
-        opps = results[2].output if not isinstance(results[2], Exception) else []
-        tasks = results[3].output if not isinstance(results[3], Exception) else []
+        # pydantic-ai 1.x: result accessor is .output; gracefully handle agent failures
+        entities = _extract_output(results[0])
+        risks = _extract_output(results[1])
+        opps = _extract_output(results[2])
+        tasks = _extract_output(results[3])
 
         for i, exc in enumerate(results):
             if isinstance(exc, Exception):
@@ -110,3 +117,12 @@ def _parse_date(date_str: str | None) -> date | None:
         return datetime.fromisoformat(date_str).date()
     except ValueError:
         return None
+
+
+def _extract_output(result: object) -> list[object]:
+    """Safely extract agent output, returning empty list on exception."""
+    if isinstance(result, Exception):
+        return []
+    if hasattr(result, "output"):
+        return result.output  # type: ignore[attr-defined,return-value]
+    return []

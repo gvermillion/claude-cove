@@ -1,5 +1,11 @@
+from __future__ import annotations
+
 from m4_agent_host.domain.models import (
-    Entity, Risk, Opportunity, Task, MeetingSignals, MeetingIngestRequest
+    Entity,
+    MeetingIngestRequest,
+    MeetingSignals,
+    Risk,
+    Task,
 )
 
 
