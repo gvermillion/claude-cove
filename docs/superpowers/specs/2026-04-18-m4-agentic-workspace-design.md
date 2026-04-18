@@ -247,6 +247,14 @@ projects/m4-agentic-workspace/
     pyproject.toml
     Dockerfile
   n8n-workflows/             # Exported n8n workflow JSON files (version-controlled)
+  skills/
+    onboarding.md            # Non-technical setup walkthrough
+    vault-capture.md
+    vault-search.md
+    project-status.md
+    weekly-review.md
+    add-person.md
+    vault-health.md
   scripts/
     init-vault.sh            # Scaffold vault structure + git init + git-crypt setup
     pull-models.sh           # Pull required Ollama models
@@ -287,7 +295,90 @@ GPG_KEY_ID=<key-id>
 
 ---
 
-## 9. Key Constraints & Decisions
+## 9. Skill Layer
+
+Skills are markdown instruction files (`.md`) that Claude Code loads on demand. They encode repeatable workflows so non-technical users never need to read documentation or remember commands.
+
+### 9.1 Onboarding Skill (`onboarding`)
+
+Target user: non-technical. Goal: get from zero to a running system in one session.
+
+Checklist the skill walks through:
+1. Verify Ollama is installed and running (`ollama --version`)
+2. Pull required models (`scripts/pull-models.sh`)
+3. Copy `.env.example` → `.env`, fill in required values
+4. Run `docker compose up -d` and confirm all services healthy
+5. Run `scripts/init-vault.sh` to scaffold vault + initialize git + configure git-crypt
+6. Open n8n at `localhost:5678` and import workflows from `n8n-workflows/`
+7. Configure Granola sync folder path in `.env`
+8. Test the pipeline: drop a sample transcript into `~/granola-sync/` and verify vault update
+
+The skill is conversational — it checks each step before proceeding and surfaces errors with plain-English fixes.
+
+### 9.2 Skill Library
+
+Operational skills for day-to-day use. All read/write the vault via `obsidian-mcp`.
+
+| Skill | Trigger phrase | What it does |
+|---|---|---|
+| `vault-capture` | "capture this" | Quick-write freeform note to `inbox/` with timestamp and auto-tag |
+| `vault-search` | "find anything about X" | Semantic search via Qdrant + surface top matches with links |
+| `project-status` | "status of [project]" | Synthesize `projects/<slug>.md` + recent log entries into a summary |
+| `weekly-review` | "run weekly review" | Trigger n8n weekly cron manually; preview output before committing |
+| `add-person` | "add [name]" | Stub a new `people/<name>.md` with prompted fields (title, relationship, context) |
+| `vault-health` | "check vault" | Audit: broken wikilinks, notes missing frontmatter, unprocessed inbox items |
+
+Each skill enforces the vault constitution (append-only, wikilink syntax, required frontmatter) so casual users can't accidentally corrupt the schema.
+
+### 9.3 Skill Storage
+
+```
+projects/m4-agentic-workspace/
+  skills/
+    onboarding.md
+    vault-capture.md
+    vault-search.md
+    project-status.md
+    weekly-review.md
+    add-person.md
+    vault-health.md
+```
+
+Skills are plain markdown — no code, no dependencies. They compose with the existing Claude Code skill infrastructure.
+
+---
+
+## 10. Model Selection Guide
+
+Annotates which Claude model to use for each class of task in this project, balancing capability against token cost.
+
+| Model | ID | Best for | Avoid when |
+|---|---|---|---|
+| **Haiku** | `claude-haiku-4-5-20251001` | Boilerplate, file scaffolding, schema validation, simple transforms | Complex reasoning, multi-file architecture decisions |
+| **Sonnet** | `claude-sonnet-4-6` | Code implementation, debugging, agent prompt engineering, integration wiring | Trivial tasks (overkill), deep architectural trade-off analysis |
+| **Opus** | `claude-opus-4-7` | Architecture decisions, spec writing, complex multi-step planning, prompt design for agents | Routine implementation (expensive) |
+
+### Task-level model assignments (implementation plan)
+
+| Task category | Recommended model | Rationale |
+|---|---|---|
+| Scaffold `docker-compose.yml` + Dockerfiles | Haiku | Mechanical, pattern-based, well-defined output |
+| Write vault init script + constitution | Sonnet | Requires judgment on schema design |
+| Implement `agent-host` FastAPI routes | Sonnet | Standard implementation, known patterns |
+| Design PydanticAI agent schemas | Sonnet | Schema design needs precision, not deep reasoning |
+| Write agent system prompts | Opus | Prompt quality directly impacts extraction quality |
+| Wire n8n workflows (JSON config) | Haiku | JSON transformation, no reasoning needed |
+| Implement Qdrant embedding + retrieval | Sonnet | Standard RAG pattern, some judgment on chunking |
+| Write onboarding skill | Sonnet | Instructional writing + error handling paths |
+| Write operational skills (vault-capture, etc.) | Haiku | Short, templated instruction files |
+| Debug agent extraction quality | Opus | Requires understanding failure modes and prompt repair |
+| Write tests | Sonnet | Standard pytest patterns, some judgment on coverage |
+
+**Token optimization rule:** default to Sonnet. Step down to Haiku for pure scaffolding/boilerplate. Step up to Opus only for prompt engineering and architectural decisions where quality directly determines system behavior.
+
+---
+
+## 11. Key Constraints & Decisions
 
 - **Ollama runs natively** (not in Docker) to preserve M4 Metal GPU access. Docker on Mac runs via a Linux VM, losing direct GPU passthrough.
 - **obsidian-mcp is reused** from `projects/obsidian-mcp/` — Dockerized locally, same codebase as the VPS deployment.
