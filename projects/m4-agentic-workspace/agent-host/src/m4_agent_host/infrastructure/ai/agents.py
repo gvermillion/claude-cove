@@ -1,11 +1,13 @@
 """PydanticAI specialist agents for meeting signal extraction.
 
 Four agents run in parallel on the same transcript, each enforcing a
-typed schema. All use gemma3:9b (fast, parallel-safe on M4).
+typed schema. All use mistral:latest (7B, supports structured output, fast on M4 Metal).
+Note: gemma2:latest does not support tools/structured output in Ollama.
 """
 
 from __future__ import annotations
 
+import structlog
 from pydantic_ai import Agent
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.providers.ollama import OllamaProvider
@@ -13,8 +15,19 @@ from pydantic_ai.providers.ollama import OllamaProvider
 from m4_agent_host.config import settings
 from m4_agent_host.domain.models import Entity, Opportunity, Risk, Task
 
+log = structlog.get_logger(__name__)
+
+log.info(
+    "agents_init",
+    ollama_base_url=settings.ollama_base_url,
+    triage_model=settings.ollama_triage_model,
+    reasoning_model=settings.ollama_reasoning_model,
+)
+
+# Use mistral:latest for all agents since it supports structured output (tools)
+# gemma2:latest doesn't support tools in Ollama
 _triage_model = OllamaModel(
-    model_name=settings.ollama_triage_model,
+    model_name=settings.ollama_reasoning_model,  # mistral:latest
     provider=OllamaProvider(base_url=settings.ollama_base_url),
 )
 

@@ -69,7 +69,13 @@ class IngestService:
 
         for i, exc in enumerate(results):
             if isinstance(exc, Exception):
-                log.warning("agent_failed", agent_index=i, error=str(exc))
+                log.warning(
+                    "agent_failed",
+                    agent_index=i,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
 
         signals = MeetingSignals(entities=entities, risks=risks, opportunities=opps, tasks=tasks)
 

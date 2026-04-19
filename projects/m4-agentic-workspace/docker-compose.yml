@@ -30,7 +30,7 @@ services:
   open-webui:
     image: ghcr.io/open-webui/open-webui:v0.6.5
     ports:
-      - "3000:8080"
+      - "3009:8080"
     environment:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
     volumes:
@@ -45,7 +45,7 @@ services:
       context: ../obsidian-mcp
       dockerfile: Dockerfile
     ports:
-      - "3001:3000"
+      - "3004:3000"
     environment:
       - VAULT_PATH=/vault
       - MCP_API_KEY=${MCP_API_KEY}
@@ -60,11 +60,13 @@ services:
       context: ./agent-host
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8003:8000"
+    env_file:
+      - .env
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OLLAMA_TRIAGE_MODEL=${OLLAMA_TRIAGE_MODEL:-gemma3:9b}
-      - OLLAMA_REASONING_MODEL=${OLLAMA_REASONING_MODEL:-qwen2.5:32b}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
+      - OLLAMA_TRIAGE_MODEL=${OLLAMA_TRIAGE_MODEL:-gemma2:latest}
+      - OLLAMA_REASONING_MODEL=${OLLAMA_REASONING_MODEL:-mistral:latest}
       - VAULT_PATH=/vault
       - QDRANT_URL=http://qdrant:6333
       - OBSIDIAN_MCP_URL=${OBSIDIAN_MCP_URL:-http://obsidian-mcp:3000}
