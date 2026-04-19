@@ -7,7 +7,7 @@ from pathlib import Path
 import frontmatter
 
 from m4_agent_host.config import settings
-from m4_agent_host.domain.models import Entity, Opportunity, Risk, Task
+from m4_agent_host.domain.models import Entity, MeetingSynthesis, Opportunity, Risk, Task
 
 
 class VaultWriter:
@@ -103,6 +103,42 @@ class VaultWriter:
         ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         with path.open("a", encoding="utf-8") as f:
             f.write(f"{ts} | {agent} | {action} | {target}\n")
+
+    def write_meeting_synthesis(
+        self,
+        slug: str,
+        synthesis: MeetingSynthesis,
+        for_date: date | None = None,
+    ) -> None:
+        """Write meeting synthesis with citations to vault.
+
+        Creates vault/inbox/meetings/<slug>-synthesis.md.
+
+        Args:
+            slug: Meeting slug used as the filename stem.
+            synthesis: MeetingSynthesis containing summary and citations.
+            for_date: Optional meeting date for the front matter.
+        """
+        date_str = for_date.isoformat() if for_date else "unknown-date"
+        lines = [
+            f"# Meeting Synthesis: {slug}",
+            f"*Date: {date_str}*",
+            "",
+            "## Summary",
+            "",
+            synthesis.meeting_summary,
+            "",
+            "## Signal Evidence",
+            "",
+        ]
+        for c in synthesis.citations:
+            lines.append(f"**[{c.category}]** {c.signal}")
+            lines.append(f"> {c.evidence}")
+            lines.append("")
+
+        path = self.root / "inbox" / "meetings" / f"{slug}-synthesis.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(lines))
 
 
 def _slugify(text: str) -> str:

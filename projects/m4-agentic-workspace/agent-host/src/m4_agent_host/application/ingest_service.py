@@ -1,25 +1,38 @@
 """Meeting ingest service.
 
-Orchestrates parallel agent execution then sequentially writes results
-to the vault to avoid race conditions on shared files.
+Orchestrates sequential three-pass agent execution then writes results to the vault.
+Each agent run is traced to vault/_system/llm-traces.jsonl and exported as OTel
+spans to Arize Phoenix.
+
+After vault write and git commit, an async judge post-processing step scores each
+extraction category against the source transcript and extractor reasoning.
+
+NOTE: Categories run sequentially (not in parallel) because Ollama serialises all
+requests to a single model — parallel asyncio.gather offers no throughput benefit
+and causes unpredictable timeouts as requests queue behind each other.
 """
 
 from __future__ import annotations
 
-import asyncio
 import re
+from dataclasses import asdict
 from datetime import date, datetime
 from pathlib import Path
 
 import structlog
 
-from m4_agent_host.domain.models import MeetingIngestRequest, MeetingSignals
+from m4_agent_host.config import settings
+from m4_agent_host.domain.models import MeetingIngestRequest, MeetingSignals, MeetingSynthesis
 from m4_agent_host.infrastructure.ai.agents import (
-    entity_agent,
-    opportunity_agent,
-    risk_agent,
-    task_agent,
+    ExtractionTrace,
+    extract_entities,
+    extract_opportunities,
+    extract_risks,
+    extract_tasks,
+    summarize_meeting,
 )
+from m4_agent_host.infrastructure.ai.judge import judge_extraction
+from m4_agent_host.infrastructure.telemetry.trace_writer import TraceWriter
 from m4_agent_host.infrastructure.vault.git_helper import commit_vault
 from m4_agent_host.infrastructure.vault.writer import VaultWriter
 
@@ -27,16 +40,21 @@ log = structlog.get_logger(__name__)
 
 
 class IngestService:
-    """Orchestrate meeting ingestion: fan-out to agents, then write vault sequentially.
+    """Orchestrate meeting ingestion: sequential three-pass agents, trace, write vault, judge.
 
-    Pattern: Facade over the agent layer and vault writer.
+    Pattern: Facade over the agent layer, trace writer, and vault writer.
     """
 
-    def __init__(self, vault_writer: VaultWriter | None = None) -> None:
+    def __init__(
+        self,
+        vault_writer: VaultWriter | None = None,
+        trace_writer: TraceWriter | None = None,
+    ) -> None:
         self.writer = vault_writer or VaultWriter()
+        self.tracer = trace_writer or TraceWriter(settings.vault_path)
 
     async def ingest_meeting(self, req: MeetingIngestRequest) -> MeetingSignals:
-        """Ingest a meeting transcript, run agents in parallel, and persist signals.
+        """Ingest a meeting transcript, run two-pass agents sequentially, persist signals.
 
         Args:
             req: Meeting ingest request containing transcript and metadata.
@@ -52,32 +70,94 @@ class IngestService:
         self.writer.write_raw_transcript(req.filename, req.transcript)
         log.info("transcript_written", filename=req.filename)
 
-        # 2. Fan out — all four agents run simultaneously
-        results = await asyncio.gather(
-            entity_agent.run(req.transcript),
-            risk_agent.run(req.transcript),
-            opportunity_agent.run(req.transcript),
-            task_agent.run(req.transcript),
-            return_exceptions=True,
-        )
+        # 2. Run categories sequentially — Ollama serialises requests anyway;
+        #    sequential avoids model-eviction churn and makes timeouts predictable.
+        #    Each extractor now runs its own focused pass3 citation step internally.
+        entities, risks, opps, tasks = [], [], [], []
+        all_citations = []
+        extraction_traces: list[ExtractionTrace] = []
+        _pipeline = [
+            ("entities",      extract_entities),
+            ("risks",         extract_risks),
+            ("opportunities", extract_opportunities),
+            ("tasks",         extract_tasks),
+        ]
 
-        # pydantic-ai 1.x: result accessor is .output; gracefully handle agent failures
-        entities = _extract_output(results[0])
-        risks = _extract_output(results[1])
-        opps = _extract_output(results[2])
-        tasks = _extract_output(results[3])
-
-        for i, exc in enumerate(results):
-            if isinstance(exc, Exception):
+        for category, extract_fn in _pipeline:
+            log.info("extraction_started", slug=slug, category=category, model=settings.ollama_triage_model)
+            try:
+                if category == "entities":
+                    items, citations, trace = await extract_fn(
+                        req.transcript, slug,
+                        settings.ollama_triage_model, settings.ollama_base_url,
+                        granola_summary=req.granola_summary,
+                        participants=req.participants or [],
+                    )
+                else:
+                    items, citations, trace = await extract_fn(
+                        req.transcript, slug,
+                        settings.ollama_triage_model, settings.ollama_base_url,
+                        granola_summary=req.granola_summary,
+                    )
+                all_citations.extend(citations)
+                extraction_traces.append(trace)
+                item_count = len(items)
+                log.info(
+                    "extraction_complete",
+                    slug=slug, category=category,
+                    items=item_count, citations=len(citations),
+                )
+                await self.tracer.write({**asdict(trace), "slug": slug})
+                if category == "entities":
+                    entities = items
+                elif category == "risks":
+                    risks = items
+                elif category == "opportunities":
+                    opps = items
+                elif category == "tasks":
+                    tasks = items
+            except Exception as exc:
                 log.warning(
                     "agent_failed",
-                    agent_index=i,
+                    category=category,
                     error=str(exc),
                     error_type=type(exc).__name__,
                     exc_info=True,
                 )
+                await self.tracer.write({
+                    "slug": slug,
+                    "category": category,
+                    "model": settings.ollama_triage_model,
+                    "p2_error": str(exc),
+                })
 
-        signals = MeetingSignals(entities=entities, risks=risks, opportunities=opps, tasks=tasks)
+        # Meeting summary — use Granola summary if available (free), otherwise one LLM call.
+        log.info("summarize_started", slug=slug)
+        meeting_summary = await summarize_meeting(
+            req.transcript, req.granola_summary, slug,
+            settings.ollama_triage_model, settings.ollama_base_url,
+        )
+
+        synthesis_obj = (
+            MeetingSynthesis(meeting_summary=meeting_summary, citations=all_citations)
+            if meeting_summary or all_citations
+            else None
+        )
+        if synthesis_obj:
+            log.info(
+                "synthesis_assembled",
+                slug=slug,
+                citations=len(all_citations),
+                has_summary=bool(meeting_summary),
+            )
+
+        signals = MeetingSignals(
+            entities=entities,
+            risks=risks,
+            opportunities=opps,
+            tasks=tasks,
+            synthesis=synthesis_obj,
+        )
 
         # 3. Write sequentially — avoid race conditions on shared files
         for entity in signals.entities:
@@ -96,6 +176,9 @@ class IngestService:
         for task in signals.tasks:
             self.writer.append_log("task_agent", "append_task", task.description[:60])
 
+        if signals.synthesis:
+            self.writer.write_meeting_synthesis(slug, signals.synthesis, meeting_date)
+
         # 4. Single atomic vault commit
         commit_vault(f"agent(meeting): ingest {slug}")
         log.info(
@@ -106,7 +189,49 @@ class IngestService:
             opportunities=len(opps),
             tasks=len(tasks),
         )
+
+        # 5. Blocking judge — scores extractions against the transcript +
+        #    extractor reasoning.  Runs before returning so Ollama isn't
+        #    contended between judge and the next case's extraction.
+        if extraction_traces:
+            await self._run_judge(extraction_traces, req.transcript, slug)
+
         return signals
+
+    async def _run_judge(
+        self,
+        traces: list[ExtractionTrace],
+        transcript: str,
+        slug: str,
+    ) -> None:
+        """Run per-category judges and log results. Never raises."""
+        try:
+            scores = await judge_extraction(traces, transcript)
+            for s in scores:
+                log.info(
+                    "judge_score",
+                    slug=slug,
+                    category=s.category,
+                    mean=round(s.mean, 3),
+                    faithfulness=s.faithfulness,
+                    precision=s.precision,
+                    reasoning_quality=s.reasoning_quality,
+                    schema=s.schema_score,
+                )
+                await self.tracer.write({
+                    "slug": slug,
+                    "category": f"judge.{s.category}",
+                    "model": settings.ollama_judge_model,
+                    "faithfulness": s.faithfulness,
+                    "precision": s.precision,
+                    "reasoning_quality": s.reasoning_quality,
+                    "schema_score": s.schema_score,
+                    "mean_score": s.mean,
+                    "judge_reasoning": s.judge_reasoning,
+                    "judge_thinking": s.judge_thinking[:1000],
+                })
+        except Exception as exc:
+            log.warning("judge_post_process_failed", slug=slug, error=str(exc))
 
 
 def _make_slug(filename: str) -> str:
@@ -123,12 +248,3 @@ def _parse_date(date_str: str | None) -> date | None:
         return datetime.fromisoformat(date_str).date()
     except ValueError:
         return None
-
-
-def _extract_output(result: object) -> list[object]:
-    """Safely extract agent output, returning empty list on exception."""
-    if isinstance(result, Exception):
-        return []
-    if hasattr(result, "output"):
-        return result.output  # type: ignore[attr-defined,return-value]
-    return []

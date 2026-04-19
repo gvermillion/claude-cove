@@ -53,6 +53,8 @@ class EvalCase:
     risks: list[ExpectedRisk] = field(default_factory=list)
     opportunities: list[ExpectedOpportunity] = field(default_factory=list)
     tasks: list[ExpectedTask] = field(default_factory=list)
+    participants: list[dict] = field(default_factory=list)  # {name, email, company}
+    granola_summary: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +130,40 @@ Next steps:
         ExpectedTask(["abby", "new logo", "expansion", "metrics"], "Abby"),
         ExpectedTask(["deep-dive", "evaluation", "methodology", "chakra"]),
     ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Saichakravarthy Annam", "email": "saichakravarthy.annam@crowdstrike.com", "company": "CrowdStrike"},
+        {"name": "Abby Liu", "email": "abby.liu@crowdstrike.com", "company": "CrowdStrike"},
+        {"name": "Maria Schumacher", "email": "mschumacher@phdata.io", "company": "phData"},
+        {"name": "Gabriel Viana", "email": "gviana@phdata.io", "company": "phData"},
+        {"name": "Stephanie Ortgies", "email": "sortgies@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Cortex Analyst Updates
+- Gabriel deployed new semantic model with S1 pipe metrics (all except S1 pipe expansion — not in prod dataset yet)
+- Uses weighted averages instead of sums for mathematical accuracy; deployed to dev agent for testing
+- Next steps: add S1 pipe expansion once in prod, deploy to dev Slack, Abby to compare new logo vs expansion metrics
+
+### Agent Management Platform Demo
+- Grant showcased front-end evaluation/deployment tool with progressive disclosure design
+- Manages multiple agents, runs evaluations, monitors performance with live coverage maps
+- Architecture: runs locally, connects to Snowflake; Snowpark Container Service preferred for SSO
+- Telemetry stored in Snowflake (Prometheus/DataDog compatible); being ported to AWS Agent Forge; embeddable in Drive Nexus
+
+### Drive Nexus Agent Expansion
+- Chakra completed 20→40 metrics expansion, adding 17 digital metrics definitions; demonstrated live in Slack
+- Includes feedback mechanism and context reset functionality; no plotting (interface limitations)
+
+### Evaluation Framework Setup
+- Side-by-side comparison: Cortex Analyst vs Drive Nexus agents, same 40 questions, 15-dimensional TruLens scoring
+- Access requirements: Chakra grant permissions to phData developer role; Gabriel validate access via test query; get semantic model copy + backend table access
+
+### Next Steps
+- Chakra to grant permissions to phData team before PTO
+- Gabriel to validate end-to-end access via test query
+- Complete Drive Nexus vs Cortex Analyst evaluation next week
+- Schedule deep-dive on evaluation methodology when Chakra returns
+- Deploy Gabriel's updates to dev Slack for testing
+- Abby to run comparisons between new logo vs expansion metrics""",
 )
 
 
@@ -219,6 +255,45 @@ Next steps:
         ExpectedTask(["recording", "james", "joe", "share"]),
         ExpectedTask(["vincent", "guest speaker", "ai strategy"]),
     ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Melissa Bielagus", "email": "mbielagus@phdata.io", "company": "phData"},
+        {"name": "Sergio Valenzuela", "email": "sergio_valenzuela@trimble.com", "company": "Trimble"},
+        {"name": "Eric Schoch", "email": "eric@phdata.io", "company": "phData"},
+        {"name": "Joe Mastroianni", "email": "joe_mastroianni@trimble.com", "company": "Trimble"},
+        {"name": "Sian Riebe", "email": "sian_riebe@trimble.com", "company": "Trimble"},
+        {"name": "Victor Solano", "email": "victor_solano@trimble.com", "company": "Trimble"},
+        {"name": "Jordan Birdsell", "email": "jbirdsell@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Trimble Overview
+- 49-year-old company, heavy acquisitions; new CEO (5yr) shifting to "connect to scale": 32 ERPs→1, 30 CRMs→1
+- Three divisions: Transportation & Logistics (15%), Field Systems (40%, hardware OG), AECO (45%, construction software, growth vehicle)
+- Strong AWS/Snowflake partnership (embedded teams 3-4x/week)
+
+### Data Challenges
+- Shadow data depts using every tool; Field Systems doesn't know where data is created, owned, or consumed
+- Previous governance failed due to lack of funding; using Purview (inadequate for non-Microsoft shop)
+
+### Sergio's Role
+- 7 months at Trimble (prev: Salesforce, Adidas); reports to Chris Buckler under new CIO Chris B
+- Leads enterprise data management: metadata, master data quality, data engineering, architecture
+- Data Enabling Decision Group (bi-weekly): CIO, CISO, Head of Legal, Chief of Staff, Finance Transformation — empowered to fund
+
+### AI Initiatives
+- Two AI teams: Internal AI (Avia T. Ion, code/process) and Agentic AI (Tyler Miller, Netherlands, customer-facing marketplace)
+- Pressure to ship by Dimensions conference (Las Vegas, summer); switching Azure→AWS for new AI products
+- No governance/security process for AI product evaluation yet
+
+### Field Systems Discovery Opportunity
+- Need unbiased landscape assessment before integration; funding challenge may need AWS/Snowflake partnership
+- James (New Zealand) key stakeholder; goal: map data ecosystem, identify Snowflake migration value
+
+### Next Steps
+- MSA/NDA execution to open deeper conversations
+- Sergio to share RFP for Field Systems discovery work
+- Include Joe Mastroianni in future discussions
+- Share recording with James and Joe
+- Potential: Vincent from phData as guest speaker on AI strategy""",
 )
 
 
@@ -284,6 +359,30 @@ complex query reasoning and reduce token usage on repeated complex questions.
         ExpectedTask(["frontend", "demo", "broken", "fix", "evaluation"], "Grant"),
         ExpectedTask(["plan cache", "rag", "agentic", "implement"], "Grant"),
     ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Jordy Antunes", "email": "jantunes@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Brazil Employment Transition
+- phData converting Brazil contractors to CLT employees; ~30% monthly take-home decrease, offset by FGTS + benefits; net positive by year-end
+- Jordy not concerned; grateful for stability amid layoffs; sees long-term value; some team members complaining about taxes and health coverage
+
+### MetroTech Phase 2
+- 1.5 weeks remaining to deliver all features; SOW review completed with AI-generated requirements→user stories mapping
+- Most items covered except problematic Phase 1 ingestions; Brandon discussing ingestion scope with Tyler
+
+### AI Tool Optimization
+- Grant sharing token optimization: Rust bash interceptor + pre/post tool hooks; millions of tokens saved monthly
+- Jordy experimenting with DSPy: built LiteLLM proxy for Snowflake rate limits; 8+ hour optimization runs due to sequential processing; missing intermediate logging
+
+### Workflow Challenges
+- Grant's evaluation framework: backend functional (13 judges), frontend demo mode broken; breaks prompts into modules mapped to failure modes
+- Grant's system: $60-70/full run (Sonnet 3.5); Jordy's MetroTech: $200+ due to large doc processing; missing prompt caching in Snowflake Claude
+
+### Next Steps
+- Fix frontend demo mode in evaluation framework (Grant)
+- Implement agentic plan cache layer with RAG component (Grant)
+- Brandon to resolve MetroTech Phase 1 ingestion scope with Tyler""",
 )
 
 
@@ -372,6 +471,49 @@ scheduled with Grant, Omar, and Gary.
         ExpectedTask(["latium", "precisely", "identify", "mle"]),
         ExpectedTask(["andrew", "pipeline", "analysis", "volunteers"], "Andrew"),
     ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Murray Webb", "email": "mwebb@phdata.io", "company": "phData"},
+        {"name": "Brandon Veber", "email": "bveber@phdata.io", "company": "phData"},
+        {"name": "Andrew Evans", "email": "aevans@phdata.io", "company": "phData"},
+        {"name": "Dominick Rocco", "email": "drocco@phdata.io", "company": "phData"},
+        {"name": "Garrett Springer", "email": "gspringer@phdata.io", "company": "phData"},
+        {"name": "Eric Carpenter", "email": "ecarpenter@phdata.io", "company": "phData"},
+        {"name": "Elizabeth Dinevski", "email": "edinevski@phdata.io", "company": "phData"},
+        {"name": "Madison Nelson", "email": "mnelson@phdata.io", "company": "phData"},
+        {"name": "Brian Cohn Welke", "email": "bcohn@phdata.io", "company": "phData"},
+        {"name": "Zachary Zinda", "email": "zzinda@phdata.io", "company": "phData"},
+        {"name": "Steven Price", "email": "sprice@phdata.io", "company": "phData"},
+        {"name": "Erik Hyrkas", "email": "ehyrkas@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Welcome & Introductions
+- Brian Cohn Welke joined as Principal ML Solutions Architect: PhD CS, 10+ yrs ML, healthcare/life sciences/energy specialist
+- Team now covers all US time zones; Eric Carpenter won Milwaukee meatball competition
+
+### Utilization & Staffing
+- Utilization ~70-75%, dropping; bench: Latium, Lucas, Bruno, David (new MLEs)
+- Bruno interviewing at Chick-fil-A; Nikke leaving, needs backfill; upcoming: Leonard, InterNova, Precisely
+- George → Leonard (next week); need Latium MLE for Precisely next week
+- CrowdStrike legal: positive tone shift, 1-2 weeks from closing
+
+### Pipeline
+- $12M vanished from Q1, $9M appeared in Q3; current ~$18M, need 2/3 to hit $12.5M target
+- Q-IT dropped $5M→$1.25M unexplained; Stride largest opp (could take $5M immediately)
+- Norwegian Cruise Lines: $700K pitched successfully; Andrew seeking pipeline analysis volunteers
+
+### Technology Roadmap
+- "Wait and see" objection emerging; Precisely debating MCP vs Snowflake releases
+- Solutions: Laura Martinelli (Snowflake partner SE), product roadmap access, preserve optionality
+- Garrett designated ML practice point person for Snowflake roadmap
+
+### AWS Partnership
+- Murray flying to Minneapolis Monday for big AWS review with Brian
+- Recent wins: Workday (resounding yes), Cook Unity (downstream potential), Digital Lock (training)
+- Upcoming: Delta meeting May with Todd in Atlanta; CrowdStrike = AWS+Snowflake opportunity
+
+### Agentic Delivery Framework
+- Omar's skills-based framework: reduces talk-to-data projects 6-8wks→4wks, enables fixed-bid, cost $100K→$40K
+- Next: Marketing strategy meeting with Grant, Omar, Gary""",
 )
 
 

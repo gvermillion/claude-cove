@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from m4_agent_host.application.ingest_service import IngestService, _make_slug, _parse_date
 from m4_agent_host.domain.models import MeetingIngestRequest, MeetingSignals
+from m4_agent_host.infrastructure.ai.agents import ExtractionTrace
 from m4_agent_host.infrastructure.vault.writer import VaultWriter
 
 
@@ -20,7 +21,10 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def service(vault: Path) -> IngestService:
-    return IngestService(vault_writer=VaultWriter(vault_path=str(vault)))
+    from m4_agent_host.infrastructure.telemetry.trace_writer import TraceWriter
+
+    tw = TraceWriter(str(vault))
+    return IngestService(vault_writer=VaultWriter(vault_path=str(vault)), trace_writer=tw)
 
 
 def test_make_slug_strips_extension_and_slugifies() -> None:
@@ -39,21 +43,30 @@ def test_parse_date_parses_iso() -> None:
     assert result == date(2024, 1, 15)
 
 
+def _make_extract_mock(items: list, category: str, slug: str = "test") -> AsyncMock:
+    """Build an AsyncMock that returns (items, citations, ExtractionTrace)."""
+    trace = ExtractionTrace(
+        category=category,
+        slug=slug,
+        model="test-model",
+        p1_system="sys",
+        p1_response="resp",
+        p1_thinking="",
+        p2_input="inp",
+    )
+    return AsyncMock(return_value=(items, [], trace))
+
+
 @pytest.mark.asyncio()
 async def test_ingest_meeting_writes_raw_transcript(service: IngestService, vault: Path) -> None:
-    mock_result = MagicMock()
-    mock_result.output = []  # pydantic-ai 1.x uses .output
-
     with (
-        patch("m4_agent_host.application.ingest_service.entity_agent") as ea,
-        patch("m4_agent_host.application.ingest_service.risk_agent") as ra,
-        patch("m4_agent_host.application.ingest_service.opportunity_agent") as oa,
-        patch("m4_agent_host.application.ingest_service.task_agent") as ta,
+        patch("m4_agent_host.application.ingest_service.extract_entities", _make_extract_mock([], "entities")),
+        patch("m4_agent_host.application.ingest_service.extract_risks", _make_extract_mock([], "risks")),
+        patch("m4_agent_host.application.ingest_service.extract_opportunities", _make_extract_mock([], "opportunities")),
+        patch("m4_agent_host.application.ingest_service.extract_tasks", _make_extract_mock([], "tasks")),
+        patch("m4_agent_host.application.ingest_service.summarize_meeting", AsyncMock(return_value="")),
         patch("m4_agent_host.application.ingest_service.commit_vault"),
     ):
-        for agent in [ea, ra, oa, ta]:
-            agent.run = AsyncMock(return_value=mock_result)
-
         req = MeetingIngestRequest(transcript="Test meeting", filename="2024-01-15-test.md")
         signals = await service.ingest_meeting(req)
 
@@ -65,20 +78,17 @@ async def test_ingest_meeting_writes_raw_transcript(service: IngestService, vaul
 async def test_ingest_meeting_handles_agent_exception_gracefully(
     service: IngestService, vault: Path
 ) -> None:
-    mock_result = MagicMock()
-    mock_result.output = []  # pydantic-ai 1.x uses .output
-
     with (
-        patch("m4_agent_host.application.ingest_service.entity_agent") as ea,
-        patch("m4_agent_host.application.ingest_service.risk_agent") as ra,
-        patch("m4_agent_host.application.ingest_service.opportunity_agent") as oa,
-        patch("m4_agent_host.application.ingest_service.task_agent") as ta,
+        patch(
+            "m4_agent_host.application.ingest_service.extract_entities",
+            AsyncMock(side_effect=RuntimeError("Ollama down")),
+        ),
+        patch("m4_agent_host.application.ingest_service.extract_risks", _make_extract_mock([], "risks")),
+        patch("m4_agent_host.application.ingest_service.extract_opportunities", _make_extract_mock([], "opportunities")),
+        patch("m4_agent_host.application.ingest_service.extract_tasks", _make_extract_mock([], "tasks")),
+        patch("m4_agent_host.application.ingest_service.summarize_meeting", AsyncMock(return_value="")),
         patch("m4_agent_host.application.ingest_service.commit_vault"),
     ):
-        ea.run = AsyncMock(side_effect=RuntimeError("Ollama down"))
-        for agent in [ra, oa, ta]:
-            agent.run = AsyncMock(return_value=mock_result)
-
         req = MeetingIngestRequest(transcript="Test", filename="test.md")
         signals = await service.ingest_meeting(req)
 

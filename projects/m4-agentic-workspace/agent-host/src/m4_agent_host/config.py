@@ -9,10 +9,12 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://host.docker.internal:11434/v1"
     ollama_triage_model: str = "gemma2:latest"
     ollama_reasoning_model: str = "mistral:latest"
+    ollama_judge_model: str = "qwen3:8b"
 
     vault_path: str = "/vault"
     qdrant_url: str = "http://qdrant:6333"
     log_level: str = "INFO"
+    phoenix_collector_endpoint: str = "http://phoenix:6006/v1/traces"
 
 
 settings = Settings()
