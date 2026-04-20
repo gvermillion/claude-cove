@@ -26,6 +26,7 @@ from pydantic import BaseModel
 
 from m4_agent_host.config import settings
 from m4_agent_host.domain.models import Entity, MeetingSignals, MeetingSynthesis, Opportunity, ParticipantInfo, Risk, SignalCitation, Task
+from m4_agent_host.infrastructure.ai.tokenizer import count_tokens
 from m4_agent_host.infrastructure.telemetry.tracer import tracer
 
 log = structlog.get_logger(__name__)
@@ -41,14 +42,108 @@ _M = TypeVar("_M", bound=BaseModel)
 
 
 # ---------------------------------------------------------------------------
+# Line-numbering utility for transcript traceability
+# ---------------------------------------------------------------------------
+
+def _number_lines(text: str) -> str:
+    """Prepend zero-padded line numbers to each line of text.
+
+    Used to give the extraction model line-number awareness so it can
+    cite specific source locations in its output.
+
+    >>> _number_lines("hello\\nworld")
+    '01: hello\\n02: world'
+    """
+    lines = text.split("\n")
+    width = len(str(len(lines)))
+    return "\n".join(f"{i + 1:0{width}d}: {line}" for i, line in enumerate(lines))
+
+
+def _validate_entity_citations(
+    entities: list[Entity],
+    numbered_text: str,
+) -> list[Entity]:
+    """Deterministic post-Pass-2 validation: check entity evidence against source.
+
+    For each entity:
+    1. If ``source_line`` is set, verify the entity's name (or a surname token)
+       appears on that line of the numbered transcript.
+    2. If the check fails, downgrade ``confidence`` to ``"inferred"``.
+    3. Hard-filter: drop entities whose ``evidence_quote`` is empty.
+    4. Hard-filter: drop entities named "Grant Vermillion" (the user).
+
+    Args:
+        entities: Structured entities from Pass 2.
+        numbered_text: The line-numbered transcript that was sent to the model.
+
+    Returns:
+        Filtered list of entities with ``confidence`` adjusted.
+    """
+    source_lines = numbered_text.split("\n")
+    validated: list[Entity] = []
+
+    for entity in entities:
+        # Hard-filter: never extract the user
+        if entity.name.lower().strip() in ("grant vermillion", "grant"):
+            log.debug("validate_entity_dropped_user", name=entity.name)
+            continue
+
+        # Hard-filter: require evidence
+        if not entity.evidence_quote or not entity.evidence_quote.strip():
+            log.debug("validate_entity_dropped_no_evidence", name=entity.name)
+            continue
+
+        # Soft-check: verify source_line contains the entity's name
+        if entity.source_line is not None and entity.source_line > 0:
+            idx = entity.source_line - 1  # 0-based
+            if idx < len(source_lines):
+                line_text = source_lines[idx].lower()
+                # Check for full name or surname (last token)
+                name_lower = entity.name.lower()
+                surname = name_lower.split()[-1] if name_lower.split() else name_lower
+                if name_lower not in line_text and surname not in line_text:
+                    entity = entity.model_copy(update={"confidence": "inferred"})
+                    log.debug(
+                        "validate_entity_line_mismatch",
+                        name=entity.name,
+                        source_line=entity.source_line,
+                        line_content=source_lines[idx][:80],
+                    )
+            else:
+                entity = entity.model_copy(update={"confidence": "inferred"})
+
+        validated.append(entity)
+
+    return validated
+
+
+# ---------------------------------------------------------------------------
 # Pass 1 — free-form extraction instructions (one per category)
 # ---------------------------------------------------------------------------
 
 _ENTITY_EXTRACT_INSTRUCTION = (
-    "List every person explicitly named in this meeting transcript.\n"
-    "For each person write: full name, job title (if mentioned), "
-    "relationship to the speaker (client/colleague/stakeholder/vendor/unknown), "
-    "and any personal notes (communication style, shared history, preferences).\n"
+    "You are a high-precision Executive Assistant to Grant Vermillion (phData).\n"
+    "Your task: extract ONLY people who are explicitly named in the SOURCE_TRANSCRIPT.\n\n"
+    "IDENTITY RULES:\n"
+    "- Grant Vermillion = the USER. NEVER extract Grant as an entity.\n"
+    "- phData employees = 'colleague'\n"
+    "- Client organization employees = 'client' or 'stakeholder'\n"
+    "- All others = 'vendor' or 'unknown'\n\n"
+    "EXTRACTION PROTOCOL:\n"
+    "1. SCAN the transcript line by line for proper nouns that are person names.\n"
+    "2. EXISTENCE CHECK: For each candidate name, confirm it appears in the SOURCE_TRANSCRIPT section.\n"
+    "   Names that appear ONLY in ATTENDEE_REFERENCE_DATA but NOT in the transcript must be SKIPPED.\n"
+    "3. For each verified person, output:\n"
+    "   - Evidence Quote: the 5-8 word verbatim snippet where they appear\n"
+    "   - Line Number: the line number from the transcript\n"
+    "   - Full Name: their full name (use ATTENDEE_REFERENCE_DATA to resolve first-name-only mentions)\n"
+    "   - Title: job title if mentioned, otherwise 'unknown'\n"
+    "   - Relationship: client/colleague/stakeholder/vendor/unknown\n"
+    "   - Personal Notes: communication style, preferences, rapport details\n\n"
+    "HARD RULES:\n"
+    "- NO PLACEHOLDERS: if you cannot find evidence, do not include the person.\n"
+    "- NO GRANT VERMILLION: never extract the user.\n"
+    "- EVIDENCE FIRST: always cite before naming.\n"
     "Plain bullet points. No JSON."
 )
 
@@ -83,16 +178,27 @@ _ENTITY_STRUCTURE_SYSTEM = (
     "Convert it into a JSON array. Return ONLY the JSON array — no explanation, "
     "no markdown fences, no extra text.\n"
     "Only include people from the input list — do NOT add extras.\n"
+    "Do NOT include Grant Vermillion — he is the user, not an entity.\n"
     "If the input is empty or no people are listed, return [].\n\n"
-    "Each object: {\"name\": str, \"title\": str|null, "
+    "Each object: {\"evidence_quote\": str, \"source_line\": int|null, "
+    "\"name\": str, \"title\": str|null, "
     "\"relationship\": \"client\"|\"colleague\"|\"stakeholder\"|\"vendor\"|\"unknown\", "
-    "\"rapport_notes\": [str]}\n\n"
+    "\"rapport_notes\": [str], "
+    "\"confidence\": \"verified\"|\"inferred\"}\n\n"
+    "Rules:\n"
+    "- evidence_quote: 5-8 word verbatim snippet from transcript where the person is mentioned. "
+    "REQUIRED — drop entries with no evidence.\n"
+    "- source_line: line number from the transcript (if line numbers were provided). null if unknown.\n"
+    "- confidence: 'verified' if name and relationship are explicitly stated, "
+    "'inferred' if you had to guess title or relationship.\n\n"
     "Example output:\n"
     "[\n"
-    "  {\"name\": \"Sarah Chen\", \"title\": \"Product Lead\", \"relationship\": \"client\", "
-    "\"rapport_notes\": [\"new to the role\"]},\n"
-    "  {\"name\": \"Lin Park\", \"title\": \"CTO\", \"relationship\": \"stakeholder\", "
-    "\"rapport_notes\": [\"metrics-driven\"]}\n"
+    "  {\"evidence_quote\": \"Sarah Chen presented the product roadmap\", \"source_line\": 12, "
+    "\"name\": \"Sarah Chen\", \"title\": \"Product Lead\", \"relationship\": \"client\", "
+    "\"rapport_notes\": [\"new to the role\"], \"confidence\": \"verified\"},\n"
+    "  {\"evidence_quote\": \"Lin Park asked about scalability\", \"source_line\": 45, "
+    "\"name\": \"Lin Park\", \"title\": \"CTO\", \"relationship\": \"stakeholder\", "
+    "\"rapport_notes\": [\"metrics-driven\"], \"confidence\": \"verified\"}\n"
     "]"
 )
 
@@ -150,20 +256,21 @@ _CITATION_STRUCTURE_SYSTEM = (
     "You are a citation extractor. You will receive:\n"
     "1. A CATEGORY label (entity/risk/opportunity/task)\n"
     "2. A SIGNALS list — the items extracted from this meeting for that category\n"
-    "3. A TRANSCRIPT EXCERPT — the source text\n\n"
+    "3. A TRANSCRIPT EXCERPT — the source text (with line numbers)\n\n"
     "For each signal, find a short verbatim or near-verbatim quote from the transcript "
     "that supports it. Return ONLY a JSON array — no explanation, no markdown fences.\n\n"
     "Rules:\n"
     "- Only include signals you can find clear evidence for — skip the rest.\n"
     "- Keep evidence quotes under 140 characters; truncate with '...' if needed.\n"
     "- category field must match the CATEGORY label exactly.\n"
+    "- source_line: the line number where the evidence appears (from the numbered transcript). null if unknown.\n"
     "- Return [] if no clear evidence exists.\n"
     "- Limit to 5 citations maximum.\n\n"
-    "Each object: {\"category\": str, \"signal\": str, \"evidence\": str}\n\n"
+    "Each object: {\"category\": str, \"signal\": str, \"evidence\": str, \"source_line\": int|null}\n\n"
     "Example output:\n"
     "[\n"
     "  {\"category\": \"risk\", \"signal\": \"API credentials not shared\", "
-    "\"evidence\": \"Tom mentioned the credentials haven't come through yet\"}\n"
+    "\"evidence\": \"Tom mentioned the credentials haven't come through yet\", \"source_line\": 42}\n"
     "]"
 )
 
@@ -178,6 +285,7 @@ async def _structure_pass2(
     item_model: type[_M],
     model: str,
     base_url: str,
+    span: trace.Span | None = None,
 ) -> tuple[list[_M], int, int]:
     """Call Ollama natively for JSON structuring and validate with Pydantic.
 
@@ -190,11 +298,19 @@ async def _structure_pass2(
         item_model: Pydantic model class to validate each array item against.
         model: Ollama model name.
         base_url: Ollama base URL (may include /v1 — stripped internally).
+        span: Optional span to attach LLM input/output message attributes to.
 
     Returns:
         Tuple of (validated items, prompt_tokens, completion_tokens).
         Returns ([], 0, 0) on any parse failure.
     """
+    if span is not None:
+        span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.LLM.value)
+        span.set_attribute(f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.{MessageAttributes.MESSAGE_ROLE}", "system")
+        span.set_attribute(f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.{MessageAttributes.MESSAGE_CONTENT}", system)
+        span.set_attribute(f"{SpanAttributes.LLM_INPUT_MESSAGES}.1.{MessageAttributes.MESSAGE_ROLE}", "user")
+        span.set_attribute(f"{SpanAttributes.LLM_INPUT_MESSAGES}.1.{MessageAttributes.MESSAGE_CONTENT}", raw)
+
     ollama_base = base_url.rstrip("/").removesuffix("/v1")
     log.info("pass2_structuring_started", model=model, input_len=len(raw))
     async with httpx.AsyncClient() as client:
@@ -253,6 +369,7 @@ class ExtractionTrace:
     p3_error: str | None = None
     p1_prompt_tokens: int = 0
     p1_completion_tokens: int = 0
+    p1_thinking_tokens: int = 0
     p2_prompt_tokens: int = 0
     p2_completion_tokens: int = 0
     p3_prompt_tokens: int = 0
@@ -279,7 +396,8 @@ async def _cite_for_category(
         Tuple of (citations, prompt_tokens, completion_tokens).  Returns ([], 0, 0) on failure.
     """
     excerpt = transcript[:5000]  # focused window — citations rarely need full text
-    user_msg = f"CATEGORY: {category}\nSIGNALS:\n{items_text}\n\nTRANSCRIPT EXCERPT:\n{excerpt}"
+    numbered_excerpt = _number_lines(excerpt)
+    user_msg = f"CATEGORY: {category}\nSIGNALS:\n{items_text}\n\nTRANSCRIPT EXCERPT:\n{numbered_excerpt}"
 
     with tracer.start_as_current_span("pass3.citations") as span:
         span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
@@ -290,6 +408,7 @@ async def _cite_for_category(
             citations, p_tok, c_tok = await _structure_pass2(
                 user_msg, _CITATION_STRUCTURE_SYSTEM, SignalCitation,
                 settings.ollama_reasoning_model, settings.ollama_base_url,
+                span=span,
             )
             log.info("pass3_citations_complete", category=category, count=len(citations), prompt_tok=p_tok, completion_tok=c_tok)
             span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p_tok)
@@ -331,7 +450,7 @@ async def _raw_extract(
             are silently skipped (useful in tests).
 
     Returns:
-        Tuple of (extracted_text, system_prompt_used, thinking, prompt_tokens, completion_tokens).
+        Tuple of (extracted_text, system_prompt_used, thinking, prompt_tokens, completion_tokens, thinking_tokens).
     """
     # Truncate very long transcripts to keep inference time under ~60s per call.
     # Keep the first 8000 chars (opening context, introductions) and last 3000
@@ -368,15 +487,15 @@ async def _raw_extract(
             f"{ollama_base}/api/chat",
             json={
                 "model": model,
-                "think": True,
+                "think": False,
                 "stream": False,
-                "options": {"num_predict": 16384},
+                "options": {"num_predict": 1024},
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": user_msg},
                 ],
             },
-            timeout=600.0,
+            timeout=300.0,
         )
         resp.raise_for_status()
 
@@ -389,11 +508,16 @@ async def _raw_extract(
 
     # Chain-of-thought reasoning (populated when think=True)
     thinking: str = (msg.get("thinking") or "").strip()
+    # Ollama eval_count includes thinking tokens — estimate the split.
+    thinking_tokens: int = count_tokens(thinking, model) if thinking else 0
+    visible_tokens: int = max(completion_tokens - thinking_tokens, 0)
     log.info(
         "pass1_extraction_complete",
         model=model,
         prompt_tok=prompt_tokens,
         completion_tok=completion_tokens,
+        thinking_tok=thinking_tokens,
+        visible_tok=visible_tokens,
         has_thinking=bool(thinking),
     )
 
@@ -410,8 +534,10 @@ async def _raw_extract(
         span.set_attribute(SpanAttributes.OUTPUT_VALUE, content)
         if thinking:
             span.set_attribute("llm.thinking", thinking)
+            span.set_attribute("llm.thinking_tokens", thinking_tokens)
+            span.set_attribute("llm.visible_tokens", visible_tokens)
 
-    return content, system, thinking, prompt_tokens, completion_tokens
+    return content, system, thinking, prompt_tokens, completion_tokens, thinking_tokens
 
 
 # ---------------------------------------------------------------------------
@@ -434,23 +560,38 @@ async def extract_entities(
         span.set_attribute(SpanAttributes.LLM_MODEL_NAME, triage_model)
         span.set_attribute("meeting.participant_count", len(participants) if participants else 0)
 
-        # Build participant roster prefix when calendar attendees are known
+        # Build delimited user message with attendee reference + line-numbered transcript
+        source_text = granola_summary if granola_summary else transcript
+        numbered_source = _number_lines(source_text)
+
+        user_msg_parts: list[str] = []
         if participants:
             roster = "\n".join(
                 f"  - {p.name}" + (f" <{p.email}>" if p.email else "") + (f" ({p.company})" if p.company else "")
                 for p in participants
             )
-            participant_context = (
-                f"KNOWN MEETING ATTENDEES (use these exact full names when you recognize them):\n{roster}\n\n"
-            )
-        else:
-            participant_context = ""
+            user_msg_parts.append(f"### ATTENDEE_REFERENCE_DATA\n{roster}")
 
-        instruction = participant_context + _ENTITY_EXTRACT_INSTRUCTION
-        source_text = granola_summary if granola_summary else transcript
-        raw, system, thinking, p1_pt, p1_ct = await _raw_extract(source_text, instruction, triage_model, base_url, span=span)
-        span.set_attribute("pass1.response_chars", len(raw))
-        span.set_attribute("pass1.extraction", raw[:1000])
+        user_msg_parts.append(f"### SOURCE_TRANSCRIPT_TO_PROCESS\n{numbered_source}")
+        user_msg_parts.append(
+            "### FINAL INSTRUCTION\n"
+            "Perform the existence check. Only generate profiles for people "
+            "mentioned in SOURCE_TRANSCRIPT_TO_PROCESS. Do NOT extract Grant Vermillion."
+        )
+        entity_user_msg = "\n\n".join(user_msg_parts)
+
+        log.info("entities | reading meeting", slug=slug, chars=len(source_text), model=triage_model)
+        with tracer.start_as_current_span("pass1.raw_extract") as p1_span:
+            p1_span.set_attribute("pass1.category", "entities")
+            p1_span.set_attribute(SpanAttributes.INPUT_VALUE, entity_user_msg[:2000])
+            raw, system, thinking, p1_pt, p1_ct, p1_tt = await _raw_extract(entity_user_msg, _ENTITY_EXTRACT_INSTRUCTION, triage_model, base_url, span=p1_span)
+            p1_span.set_attribute("pass1.response_chars", len(raw))
+            p1_span.set_attribute("pass1.extraction", raw[:1000])
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p1_pt)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p1_ct)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p1_pt + p1_ct)
+            p1_span.set_status(Status(StatusCode.OK))
+        log.info("entities | raw extraction done", slug=slug, raw_chars=len(raw), tokens=p1_pt + p1_ct)
 
         trace = ExtractionTrace(
             category="entities",
@@ -462,13 +603,15 @@ async def extract_entities(
             p2_input=raw,
             p1_prompt_tokens=p1_pt,
             p1_completion_tokens=p1_ct,
+            p1_thinking_tokens=p1_tt,
         )
         try:
+            log.info("entities | structuring schema", slug=slug)
             with tracer.start_as_current_span("pass2.schema_structure") as p2_span:
                 p2_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
                 p2_span.set_attribute(SpanAttributes.INPUT_VALUE, raw[:2000])
                 p2_span.set_attribute("pass2.category", "entities")
-                items, p2_pt, p2_ct = await _structure_pass2(raw, _ENTITY_STRUCTURE_SYSTEM, Entity, triage_model, base_url)
+                items, p2_pt, p2_ct = await _structure_pass2(raw, _ENTITY_STRUCTURE_SYSTEM, Entity, triage_model, base_url, span=p2_span)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p2_pt)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p2_ct)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p2_pt + p2_ct)
@@ -478,13 +621,25 @@ async def extract_entities(
             trace.p2_prompt_tokens = p2_pt
             trace.p2_completion_tokens = p2_ct
             span.set_attribute("pass2.items_extracted", len(items))
+            log.info("entities | found entities", slug=slug, count=len(items), names=[e.name for e in items])
+
+            # Pass 2.5 — deterministic validation: filter Grant, empty evidence, line mismatches
+            pre_filter_count = len(items)
+            items = _validate_entity_citations(items, numbered_source)
+            dropped = pre_filter_count - len(items)
+            if dropped:
+                log.info("entities | validation filtered", slug=slug, dropped=dropped, remaining=len(items))
+            span.set_attribute("pass2_5.pre_filter_count", pre_filter_count)
+            span.set_attribute("pass2_5.post_filter_count", len(items))
 
             # Pass 3 — focused citation extraction for entities only
+            log.info("entities | extracting citations", slug=slug, items=len(items))
             items_text = "\n".join(f"  - {e.name} ({e.relationship})" for e in items)
             citations, p3_pt, p3_ct = await _cite_for_category(transcript, "entity", items_text)
             trace.p3_prompt_tokens = p3_pt
             trace.p3_completion_tokens = p3_ct
             span.set_attribute("pass3.citations_count", len(citations))
+            log.info("entities | citations done", slug=slug, count=len(citations))
 
             # Cumulative token counts across all 3 passes
             total_pt = p1_pt + p2_pt + p3_pt
@@ -519,9 +674,18 @@ async def extract_risks(
         span.set_attribute(SpanAttributes.LLM_MODEL_NAME, triage_model)
 
         source_text = granola_summary if granola_summary else transcript
-        raw, system, thinking, p1_pt, p1_ct = await _raw_extract(source_text, _RISK_EXTRACT_INSTRUCTION, triage_model, base_url, span=span)
-        span.set_attribute("pass1.response_chars", len(raw))
-        span.set_attribute("pass1.extraction", raw[:1000])
+        log.info("risks | reading meeting", slug=slug, chars=len(source_text), model=triage_model)
+        with tracer.start_as_current_span("pass1.raw_extract") as p1_span:
+            p1_span.set_attribute("pass1.category", "risks")
+            p1_span.set_attribute(SpanAttributes.INPUT_VALUE, source_text[:2000])
+            raw, system, thinking, p1_pt, p1_ct, p1_tt = await _raw_extract(source_text, _RISK_EXTRACT_INSTRUCTION, triage_model, base_url, span=p1_span)
+            p1_span.set_attribute("pass1.response_chars", len(raw))
+            p1_span.set_attribute("pass1.extraction", raw[:1000])
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p1_pt)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p1_ct)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p1_pt + p1_ct)
+            p1_span.set_status(Status(StatusCode.OK))
+        log.info("risks | raw extraction done", slug=slug, raw_chars=len(raw), tokens=p1_pt + p1_ct)
 
         trace = ExtractionTrace(
             category="risks",
@@ -533,13 +697,15 @@ async def extract_risks(
             p2_input=raw,
             p1_prompt_tokens=p1_pt,
             p1_completion_tokens=p1_ct,
+            p1_thinking_tokens=p1_tt,
         )
         try:
+            log.info("risks | structuring schema", slug=slug)
             with tracer.start_as_current_span("pass2.schema_structure") as p2_span:
                 p2_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
                 p2_span.set_attribute(SpanAttributes.INPUT_VALUE, raw[:2000])
                 p2_span.set_attribute("pass2.category", "risks")
-                items, p2_pt, p2_ct = await _structure_pass2(raw, _RISK_STRUCTURE_SYSTEM, Risk, triage_model, base_url)
+                items, p2_pt, p2_ct = await _structure_pass2(raw, _RISK_STRUCTURE_SYSTEM, Risk, triage_model, base_url, span=p2_span)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p2_pt)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p2_ct)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p2_pt + p2_ct)
@@ -549,13 +715,16 @@ async def extract_risks(
             trace.p2_prompt_tokens = p2_pt
             trace.p2_completion_tokens = p2_ct
             span.set_attribute("pass2.items_extracted", len(items))
+            log.info("risks | found risks", slug=slug, count=len(items), severities=[r.severity for r in items])
 
             # Pass 3 — focused citation extraction for risks only
+            log.info("risks | extracting citations", slug=slug, items=len(items))
             items_text = "\n".join(f"  - [{r.severity}] {r.description[:80]}" for r in items)
             citations, p3_pt, p3_ct = await _cite_for_category(transcript, "risk", items_text)
             trace.p3_prompt_tokens = p3_pt
             trace.p3_completion_tokens = p3_ct
             span.set_attribute("pass3.citations_count", len(citations))
+            log.info("risks | citations done", slug=slug, count=len(citations))
 
             # Cumulative token counts across all 3 passes
             total_pt = p1_pt + p2_pt + p3_pt
@@ -590,9 +759,18 @@ async def extract_opportunities(
         span.set_attribute(SpanAttributes.LLM_MODEL_NAME, triage_model)
 
         source_text = granola_summary if granola_summary else transcript
-        raw, system, thinking, p1_pt, p1_ct = await _raw_extract(source_text, _OPP_EXTRACT_INSTRUCTION, triage_model, base_url, span=span)
-        span.set_attribute("pass1.response_chars", len(raw))
-        span.set_attribute("pass1.extraction", raw[:1000])
+        log.info("opportunities | reading meeting", slug=slug, chars=len(source_text), model=triage_model)
+        with tracer.start_as_current_span("pass1.raw_extract") as p1_span:
+            p1_span.set_attribute("pass1.category", "opportunities")
+            p1_span.set_attribute(SpanAttributes.INPUT_VALUE, source_text[:2000])
+            raw, system, thinking, p1_pt, p1_ct, p1_tt = await _raw_extract(source_text, _OPP_EXTRACT_INSTRUCTION, triage_model, base_url, span=p1_span)
+            p1_span.set_attribute("pass1.response_chars", len(raw))
+            p1_span.set_attribute("pass1.extraction", raw[:1000])
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p1_pt)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p1_ct)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p1_pt + p1_ct)
+            p1_span.set_status(Status(StatusCode.OK))
+        log.info("opportunities | raw extraction done", slug=slug, raw_chars=len(raw), tokens=p1_pt + p1_ct)
 
         trace = ExtractionTrace(
             category="opportunities",
@@ -604,13 +782,15 @@ async def extract_opportunities(
             p2_input=raw,
             p1_prompt_tokens=p1_pt,
             p1_completion_tokens=p1_ct,
+            p1_thinking_tokens=p1_tt,
         )
         try:
+            log.info("opportunities | structuring schema", slug=slug)
             with tracer.start_as_current_span("pass2.schema_structure") as p2_span:
                 p2_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
                 p2_span.set_attribute(SpanAttributes.INPUT_VALUE, raw[:2000])
                 p2_span.set_attribute("pass2.category", "opportunities")
-                items, p2_pt, p2_ct = await _structure_pass2(raw, _OPP_STRUCTURE_SYSTEM, Opportunity, triage_model, base_url)
+                items, p2_pt, p2_ct = await _structure_pass2(raw, _OPP_STRUCTURE_SYSTEM, Opportunity, triage_model, base_url, span=p2_span)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p2_pt)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p2_ct)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p2_pt + p2_ct)
@@ -620,13 +800,16 @@ async def extract_opportunities(
             trace.p2_prompt_tokens = p2_pt
             trace.p2_completion_tokens = p2_ct
             span.set_attribute("pass2.items_extracted", len(items))
+            log.info("opportunities | found opportunities", slug=slug, count=len(items), types=[o.type for o in items])
 
             # Pass 3 — focused citation extraction for opportunities only
+            log.info("opportunities | extracting citations", slug=slug, items=len(items))
             items_text = "\n".join(f"  - [{o.type}] {o.description[:80]}" for o in items)
             citations, p3_pt, p3_ct = await _cite_for_category(transcript, "opportunity", items_text)
             trace.p3_prompt_tokens = p3_pt
             trace.p3_completion_tokens = p3_ct
             span.set_attribute("pass3.citations_count", len(citations))
+            log.info("opportunities | citations done", slug=slug, count=len(citations))
 
             # Cumulative token counts across all 3 passes
             total_pt = p1_pt + p2_pt + p3_pt
@@ -661,9 +844,18 @@ async def extract_tasks(
         span.set_attribute(SpanAttributes.LLM_MODEL_NAME, triage_model)
 
         source_text = granola_summary if granola_summary else transcript
-        raw, system, thinking, p1_pt, p1_ct = await _raw_extract(source_text, _TASK_EXTRACT_INSTRUCTION, triage_model, base_url, span=span)
-        span.set_attribute("pass1.response_chars", len(raw))
-        span.set_attribute("pass1.extraction", raw[:1000])
+        log.info("tasks | reading meeting", slug=slug, chars=len(source_text), model=triage_model)
+        with tracer.start_as_current_span("pass1.raw_extract") as p1_span:
+            p1_span.set_attribute("pass1.category", "tasks")
+            p1_span.set_attribute(SpanAttributes.INPUT_VALUE, source_text[:2000])
+            raw, system, thinking, p1_pt, p1_ct, p1_tt = await _raw_extract(source_text, _TASK_EXTRACT_INSTRUCTION, triage_model, base_url, span=p1_span)
+            p1_span.set_attribute("pass1.response_chars", len(raw))
+            p1_span.set_attribute("pass1.extraction", raw[:1000])
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p1_pt)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p1_ct)
+            p1_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p1_pt + p1_ct)
+            p1_span.set_status(Status(StatusCode.OK))
+        log.info("tasks | raw extraction done", slug=slug, raw_chars=len(raw), tokens=p1_pt + p1_ct)
 
         trace = ExtractionTrace(
             category="tasks",
@@ -675,13 +867,15 @@ async def extract_tasks(
             p2_input=raw,
             p1_prompt_tokens=p1_pt,
             p1_completion_tokens=p1_ct,
+            p1_thinking_tokens=p1_tt,
         )
         try:
+            log.info("tasks | structuring schema", slug=slug)
             with tracer.start_as_current_span("pass2.schema_structure") as p2_span:
                 p2_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
                 p2_span.set_attribute(SpanAttributes.INPUT_VALUE, raw[:2000])
                 p2_span.set_attribute("pass2.category", "tasks")
-                items, p2_pt, p2_ct = await _structure_pass2(raw, _TASK_STRUCTURE_SYSTEM, Task, triage_model, base_url)
+                items, p2_pt, p2_ct = await _structure_pass2(raw, _TASK_STRUCTURE_SYSTEM, Task, triage_model, base_url, span=p2_span)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, p2_pt)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, p2_ct)
                 p2_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, p2_pt + p2_ct)
@@ -691,8 +885,10 @@ async def extract_tasks(
             trace.p2_prompt_tokens = p2_pt
             trace.p2_completion_tokens = p2_ct
             span.set_attribute("pass2.items_extracted", len(items))
+            log.info("tasks | found tasks", slug=slug, count=len(items), owners=list({t.owner for t in items if t.owner}))
 
             # Pass 3 — focused citation extraction for tasks only
+            log.info("tasks | extracting citations", slug=slug, items=len(items))
             items_text = "\n".join(
                 f"  - {t.description[:80]}" + (f" → {t.owner}" if t.owner else "") for t in items
             )
@@ -700,6 +896,7 @@ async def extract_tasks(
             trace.p3_prompt_tokens = p3_pt
             trace.p3_completion_tokens = p3_ct
             span.set_attribute("pass3.citations_count", len(citations))
+            log.info("tasks | citations done", slug=slug, count=len(citations))
 
             # Cumulative token counts across all 3 passes
             total_pt = p1_pt + p2_pt + p3_pt
@@ -756,7 +953,7 @@ async def summarize_meeting(
         span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
         span.set_attribute("meeting.slug", slug)
         try:
-            summary, _, _, s_pt, s_ct = await _raw_extract(transcript, _SUMMARIZE_SYSTEM, triage_model, base_url, span=span)
+            summary, _, _, s_pt, s_ct, _ = await _raw_extract(transcript, _SUMMARIZE_SYSTEM, triage_model, base_url, span=span)
             span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, s_pt)
             span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, s_ct)
             span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, s_pt + s_ct)

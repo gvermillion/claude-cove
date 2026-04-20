@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://qdrant:6333"
     log_level: str = "INFO"
     phoenix_collector_endpoint: str = "http://phoenix:6006/v1/traces"
+    user_email: str = "gvermillion@phdata.io"
 
 
 settings = Settings()

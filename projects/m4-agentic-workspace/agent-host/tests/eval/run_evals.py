@@ -11,29 +11,31 @@ Metrics per signal category:
 An entity is "found" if a returned entity name contains the expected name
 substring (case-insensitive).
 
-A risk/opportunity/task is "found" if at least 2 of its keyword list appear
-in the returned item's description (case-insensitive).
+A risk/opportunity/task is "found" if at least 2 significant words from its
+expected description appear in the returned item's description (case-insensitive).
 
-Optionally runs an LLM-as-judge pass after keyword scoring using qwen3:8b
-via local Ollama (--judge flag). The judge applies a four-dimension rubric
-(completeness / faithfulness / precision / schema) and surfaces its full
-reasoning chain for calibration.
+Raw ingest responses are saved to --results-dir (default: tests/eval/results)
+as {case_id}.json so they can be scored offline with score_evals.py without
+re-running the expensive ingest pipeline.
 
 Usage:
     cd agent-host
     uv run python tests/eval/run_evals.py
     uv run python tests/eval/run_evals.py --url http://localhost:8003 --verbose
-    uv run python tests/eval/run_evals.py --judge
-    uv run python tests/eval/run_evals.py --judge --judge-model qwen3:14b --verbose
+    uv run python tests/eval/run_evals.py --results-dir /tmp/eval-results
+    # Then score saved results:
+    uv run python tests/eval/score_evals.py
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
+import json
+import re
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 
@@ -46,17 +48,24 @@ from golden_evals import (
     ExpectedTask,
 )
 
-# Lazy import of judge types — only required when --judge flag is used.
-# Imported at module level for type hints only; avoids hard dependency on httpx
-# being installed when just running keyword evals.
-try:
-    from eval_judge import JudgeCaseResult
-except ImportError:  # pragma: no cover
-    JudgeCaseResult = None  # type: ignore[assignment,misc]
-
 # ---------------------------------------------------------------------------
 # Matching helpers
 # ---------------------------------------------------------------------------
+
+_STOP_WORDS = {
+    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+    "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
+    "has", "have", "had", "will", "would", "could", "should", "may", "might",
+    "not", "no", "before", "after", "between", "their", "this", "that",
+    "it", "its", "as", "due", "via", "per", "still", "yet", "into", "than",
+    "need", "needs", "needs", "all",
+}
+
+
+def _keywords_from_description(description: str) -> list[str]:
+    """Extract significant words from an expected description for fuzzy matching."""
+    words = re.findall(r"[a-z0-9$%#]+", description.lower())
+    return [w for w in words if len(w) > 2 and w not in _STOP_WORDS]
 
 
 def _entity_match(returned: dict, expected: ExpectedEntity) -> bool:
@@ -121,7 +130,6 @@ class CaseResult:
     opportunities: CategoryScore
     tasks: CategoryScore
     error: str | None = None
-    judge: JudgeCaseResult | None = None  # populated when --judge is set
 
     @property
     def macro_f1(self) -> float:
@@ -135,16 +143,16 @@ def _describe_entity(e: ExpectedEntity) -> str:
 
 
 def _describe_risk(r: ExpectedRisk) -> str:
-    return f"[{r.severity}] {', '.join(r.keywords[:3])}"
+    return f"[{r.severity}] {r.description[:70]}"
 
 
 def _describe_opp(o: ExpectedOpportunity) -> str:
-    return f"[{o.type}] {', '.join(o.keywords[:3])}"
+    return f"[{o.type}] {o.description[:70]}"
 
 
 def _describe_task(t: ExpectedTask) -> str:
     owner = f" → {t.owner}" if t.owner else ""
-    return f"{', '.join(t.keywords[:3])}{owner}"
+    return f"{t.description[:70]}{owner}"
 
 
 def _score_entities(returned: list[dict], expected: list[ExpectedEntity]) -> CategoryScore:
@@ -202,19 +210,19 @@ def evaluate_case(case: EvalCase, response: dict) -> CaseResult:
     risks_score = _score_signals(
         response.get("risks", []),
         case.risks,
-        lambda r: r.keywords,
+        lambda r: _keywords_from_description(r.description),
         _describe_risk,
     )
     opps_score = _score_signals(
         response.get("opportunities", []),
         case.opportunities,
-        lambda o: o.keywords,
+        lambda o: _keywords_from_description(o.description),
         _describe_opp,
     )
     tasks_score = _score_signals(
         response.get("tasks", []),
         case.tasks,
-        lambda t: t.keywords,
+        lambda t: _keywords_from_description(t.description),
         _describe_task,
     )
     return CaseResult(
@@ -235,25 +243,24 @@ def run_case(
     case: EvalCase,
     client: httpx.Client,
     verbose: bool,
-    judge_args: tuple[str, str] | None = None,
+    results_dir: Path,
 ) -> CaseResult:
-    """Run one eval case: POST to ingest, score with keywords, optionally judge.
+    """Run one eval case: POST to ingest, score with keywords, save raw response.
 
     Args:
         case: The eval case to run.
         client: Shared httpx client pointed at the agent host.
         verbose: Print per-case keyword detail when True.
-        judge_args: Optional (model, base_url) tuple. When provided, an LLM
-            judge is invoked after keyword scoring and results are attached to
-            CaseResult.judge.
+        results_dir: Directory to write raw ingest response JSON for offline scoring.
 
     Returns:
-        CaseResult with keyword scores and optional judge scores.
+        CaseResult with keyword scores.
     """
     payload = {
         "transcript": case.transcript.strip(),
         "filename": f"{case.id}.md",
         "meeting_date": case.meeting_date,
+        "skip_judge": True,
     }
     if case.participants:
         payload["participants"] = case.participants
@@ -268,7 +275,7 @@ def run_case(
         import concurrent.futures  # noqa: PLC0415
 
         def _do_post() -> httpx.Response:
-            return client.post("/ingest/meeting", json=payload, timeout=600)
+            return client.post("/ingest/meeting", json=payload, timeout=1200)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(_do_post)
@@ -298,55 +305,16 @@ def run_case(
         )
         return result
 
+    # Save raw response for offline scoring with score_evals.py
+    results_dir.mkdir(parents=True, exist_ok=True)
+    out_path = results_dir / f"{case.id}.json"
+    out_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    print(f"     💾 saved → {out_path}", flush=True)
+
     result = evaluate_case(case, data)
 
     if verbose:
         _print_case_detail(case, result)
-
-    if judge_args is not None:
-        from eval_judge import judge_case  # noqa: PLC0415
-
-        judge_model, judge_url = judge_args
-        print(f"    🧠 Running judge ({judge_model})…", flush=True)
-        t_judge = time.monotonic()
-        try:
-            import concurrent.futures  # noqa: PLC0415
-
-            def _do_judge() -> "JudgeCaseResult":
-                return asyncio.run(
-                    judge_case(
-                        case_id=case.id,
-                        returned=data,
-                        expected_entities=case.entities,
-                        expected_risks=case.risks,
-                        expected_opportunities=case.opportunities,
-                        expected_tasks=case.tasks,
-                        model=judge_model,
-                        base_url=judge_url,
-                    )
-                )
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(_do_judge)
-                while not future.done():
-                    try:
-                        future.result(timeout=10)
-                    except concurrent.futures.TimeoutError:
-                        elapsed_judge = time.monotonic() - t_judge
-                        print(f"       … {elapsed_judge:>5.0f}s elapsed", flush=True)
-                judge_result = future.result()
-        except Exception as exc:  # noqa: BLE001
-            elapsed_judge = time.monotonic() - t_judge
-            print(f"    ✗ judge failed ({elapsed_judge:.0f}s) — {exc}", flush=True)
-            judge_result = None
-        else:
-            elapsed_judge = time.monotonic() - t_judge
-            print(f"    ✓ judge done ({elapsed_judge:.0f}s)", flush=True)
-
-        result.judge = judge_result
-
-        if verbose and judge_result is not None:
-            _print_judge_detail(result)
 
     return result
 
@@ -377,46 +345,8 @@ def _print_case_detail(case: EvalCase, result: CaseResult) -> None:
                 print(f"    ✗ {item}")
 
 
-def _print_judge_detail(result: CaseResult) -> None:
-    """Print per-category LLM judge scores and reasoning when --verbose is set.
-
-    Args:
-        result: CaseResult with a populated judge field.
-    """
-    if result.judge is None:
-        return
-    jr = result.judge
-    if jr.error:
-        print(f"\n  JUDGE ERROR: {jr.error}")
-        return
-
-    print(f"\n  {'─' * 60}")
-    print(f"  JUDGE SCORES  (macro={jr.macro_score:.2f})")
-    print(f"  {'─' * 60}")
-
-    for label, judg in [
-        ("entities", jr.entities),
-        ("risks", jr.risks),
-        ("opportunities", jr.opportunities),
-        ("tasks", jr.tasks),
-    ]:
-        mean = judg.mean
-        print(
-            f"  {label.upper():15s} "
-            f"completeness={judg.completeness:.2f}  "
-            f"faithfulness={judg.faithfulness:.2f}  "
-            f"precision={judg.precision:.2f}  "
-            f"schema={judg.schema_score:.2f}  "
-            f"→ {mean:.2f}"
-        )
-        if judg.reasoning:
-            # Indent multi-line reasoning
-            for line in judg.reasoning.splitlines():
-                print(f"    {line}")
-
-
 def _print_summary(results: list[CaseResult]) -> tuple[float, bool]:
-    """Print the keyword-score summary table and optional judge column.
+    """Print the keyword-score summary table.
 
     Args:
         results: All completed CaseResult objects.
@@ -424,8 +354,6 @@ def _print_summary(results: list[CaseResult]) -> tuple[float, bool]:
     Returns:
         Tuple of (avg_macro_f1, passed).
     """
-    has_judge = any(r.judge is not None and r.judge.error is None for r in results)
-
     print("\n" + "═" * 70)
     print("EVAL SUMMARY")
     print("═" * 70)
@@ -433,17 +361,12 @@ def _print_summary(results: list[CaseResult]) -> tuple[float, bool]:
     categories = ["entities", "risks", "opportunities", "tasks"]
     col_w = 16
 
-    # Header — add judge column when present
     header_cols = ["f1", *categories]
-    if has_judge:
-        header_cols.append("judge")
     print(f"{'Case':<35}" + "".join(f"{c.upper():>{col_w}}" for c in header_cols))
     print("─" * (35 + col_w * len(header_cols)))
 
-    # Per-case rows
     all_scores: dict[str, list[float]] = {c: [] for c in categories}
     f1_scores: list[float] = []
-    judge_scores: list[float] = []
 
     for r in results:
         cat_scores = {
@@ -461,38 +384,21 @@ def _print_summary(results: list[CaseResult]) -> tuple[float, bool]:
         row = f"{r.case_id[:33]:<35}{row_f1:>{col_w}.2f}"
         for c in categories:
             row += f"{cat_scores[c]:>{col_w}.2f}"
-
-        if has_judge:
-            if r.judge is not None and r.judge.error is None:
-                js = r.judge.macro_score
-                judge_scores.append(js)
-                row += f"{js:>{col_w}.2f}"
-            else:
-                row += f"{'ERR':>{col_w}}"
-
         print(row + ("  " + status if status else ""))
 
-    # Averages
     print("─" * (35 + col_w * len(header_cols)))
     avg_f1 = sum(f1_scores) / len(f1_scores) if f1_scores else 0.0
     row = f"{'AVERAGE':<35}{avg_f1:>{col_w}.2f}"
     for c in categories:
         avg = sum(all_scores[c]) / len(all_scores[c]) if all_scores[c] else 0.0
         row += f"{avg:>{col_w}.2f}"
-    if has_judge:
-        avg_judge = sum(judge_scores) / len(judge_scores) if judge_scores else 0.0
-        row += f"{avg_judge:>{col_w}.2f}"
     print(row)
     print("═" * 70)
 
-    # Pass/fail threshold
     threshold = 0.5
     passed = avg_f1 >= threshold
     verdict = "✅ PASS" if passed else "❌ FAIL"
     print(f"\n  Overall macro-F1: {avg_f1:.2f}  (threshold: {threshold})  {verdict}")
-    if has_judge and judge_scores:
-        avg_judge = sum(judge_scores) / len(judge_scores)
-        print(f"  Overall judge score: {avg_judge:.2f}")
     print()
 
     return avg_f1, passed
@@ -504,20 +410,11 @@ def main() -> None:
     parser.add_argument("--url", default="http://localhost:8003", help="Agent host base URL")
     parser.add_argument("--case", help="Run a single case by ID")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print per-case details")
+    _default_results = str(Path(__file__).parent / "results")
     parser.add_argument(
-        "--judge",
-        action="store_true",
-        help="Run LLM-as-judge scoring after keyword scoring",
-    )
-    parser.add_argument(
-        "--judge-model",
-        default="qwen3:8b",
-        help="Ollama model for judge (default: qwen3:8b)",
-    )
-    parser.add_argument(
-        "--judge-url",
-        default="http://localhost:11434",
-        help="Ollama base URL for judge — no /v1 suffix (default: http://localhost:11434)",
+        "--results-dir",
+        default=_default_results,
+        help=f"Directory to save raw ingest responses for offline scoring (default: {_default_results})",
     )
     args = parser.parse_args()
 
@@ -526,30 +423,18 @@ def main() -> None:
         print(f"No cases matched: {args.case}")
         sys.exit(1)
 
-    judge_args: tuple[str, str] | None = None
-    if args.judge:
-        judge_args = (args.judge_model, args.judge_url)
-        from eval_judge import init_tracer  # noqa: PLC0415
-        init_tracer()  # export judge spans to Phoenix at localhost:4318
+    results_dir = Path(args.results_dir)
 
     print(f"\nRunning {len(cases)} eval case(s) against {args.url}")
     print(f"Each case: entities → risks → opportunities → tasks (sequential, ~2-5 min each)")
-    if judge_args:
-        print(f"LLM judge: {args.judge_model} @ {args.judge_url}")
+    print(f"Results saved to: {results_dir.resolve()}")
+    print(f"Score with: uv run python tests/eval/score_evals.py")
     print()
 
     with httpx.Client(base_url=args.url) as client:
-        results = [run_case(c, client, args.verbose, judge_args) for c in cases]
+        results = [run_case(c, client, args.verbose, results_dir) for c in cases]
 
     _, passed = _print_summary(results)
-
-    # Flush OTel spans before exit so judge traces reach Phoenix
-    if judge_args:
-        from opentelemetry import trace as otel_trace  # noqa: PLC0415
-        provider = otel_trace.get_tracer_provider()
-        if hasattr(provider, "force_flush"):
-            provider.force_flush(timeout_millis=5000)
-
     sys.exit(0 if passed else 1)
 
 

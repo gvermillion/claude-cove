@@ -20,6 +20,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import structlog
+from opentelemetry import trace as otel_trace
 
 from m4_agent_host.config import settings
 from m4_agent_host.domain.models import MeetingIngestRequest, MeetingSignals, MeetingSynthesis
@@ -84,7 +85,7 @@ class IngestService:
         ]
 
         for category, extract_fn in _pipeline:
-            log.info("extraction_started", slug=slug, category=category, model=settings.ollama_triage_model)
+            log.info(f"pipeline | starting {category}", slug=slug, model=settings.ollama_triage_model)
             try:
                 if category == "entities":
                     items, citations, trace = await extract_fn(
@@ -103,11 +104,10 @@ class IngestService:
                 extraction_traces.append(trace)
                 item_count = len(items)
                 log.info(
-                    "extraction_complete",
-                    slug=slug, category=category,
-                    items=item_count, citations=len(citations),
+                    f"pipeline | {category} complete",
+                    slug=slug, items=item_count, citations=len(citations),
                 )
-                await self.tracer.write({**asdict(trace), "slug": slug})
+                await self.tracer.write({**asdict(trace), "slug": slug, "otel_trace_id": _current_trace_id()})
                 if category == "entities":
                     entities = items
                 elif category == "risks":
@@ -129,10 +129,11 @@ class IngestService:
                     "category": category,
                     "model": settings.ollama_triage_model,
                     "p2_error": str(exc),
+                    "otel_trace_id": _current_trace_id(),
                 })
 
         # Meeting summary — use Granola summary if available (free), otherwise one LLM call.
-        log.info("summarize_started", slug=slug)
+        log.info("pipeline | summarizing meeting", slug=slug)
         meeting_summary = await summarize_meeting(
             req.transcript, req.granola_summary, slug,
             settings.ollama_triage_model, settings.ollama_base_url,
@@ -182,7 +183,7 @@ class IngestService:
         # 4. Single atomic vault commit
         commit_vault(f"agent(meeting): ingest {slug}")
         log.info(
-            "meeting_ingested",
+            "pipeline | ingest complete",
             slug=slug,
             entities=len(entities),
             risks=len(risks),
@@ -226,12 +227,22 @@ class IngestService:
                     "precision": s.precision,
                     "reasoning_quality": s.reasoning_quality,
                     "schema_score": s.schema_score,
+                    "citation_quality": s.citation_quality,
                     "mean_score": s.mean,
                     "judge_reasoning": s.judge_reasoning,
                     "judge_thinking": s.judge_thinking[:1000],
+                    "otel_trace_id": _current_trace_id(),
                 })
         except Exception as exc:
             log.warning("judge_post_process_failed", slug=slug, error=str(exc))
+
+
+def _current_trace_id() -> str:
+    """Return the current OTel trace_id as a hex string, or empty string."""
+    ctx = otel_trace.get_current_span().get_span_context()
+    if ctx and ctx.is_valid:
+        return format(ctx.trace_id, "032x")
+    return ""
 
 
 def _make_slug(filename: str) -> str:

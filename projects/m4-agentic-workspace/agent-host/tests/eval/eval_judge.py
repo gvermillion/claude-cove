@@ -5,6 +5,9 @@ its full reasoning chain before committing to scores. This makes the judge
 auditable and calibratable — you can read why it scored something low and
 adjust extraction prompts accordingly.
 
+One LLM call per category (entities / risks / opportunities / tasks), matching
+the production judge architecture. Each call scores four dimensions:
+
 Rubric (per category, 0.0–1.0 each):
   completeness  Did the agent find all expected signals?
   faithfulness  Are descriptions accurate to the source content?
@@ -88,102 +91,101 @@ class JudgeCaseResult:
 
 
 # ---------------------------------------------------------------------------
-# System prompt
+# Per-category system prompts
 # ---------------------------------------------------------------------------
 
-_JUDGE_SYSTEM = """/think
-You are an expert evaluator assessing how well an AI agent extracted structured signals from a meeting transcript.
+_JUDGE_SYSTEM_TEMPLATE = """/think
+You are an expert evaluator assessing how well an AI agent extracted {category} from a meeting transcript.
 
 You will receive:
-1. EXPECTED signals — the ground-truth labels
-2. RETURNED signals — what the agent actually extracted
+1. EXPECTED {category_upper} — the ground-truth labels
+2. RETURNED {category_upper} — what the agent actually extracted
 
-Score each of the four categories (entities, risks, opportunities, tasks) on four dimensions:
+Score on four dimensions:
 
 RUBRIC:
 - completeness (0.0–1.0): What fraction of expected signals were found? Use semantic matching, not keyword matching. "Chakra needs to grant permissions" matches "Saichakravarthy Annam permissions PTO" if they refer to the same thing.
 - faithfulness (0.0–1.0): Are the returned descriptions accurate to what was actually discussed? Penalize distortions, fabrications, or significant omissions.
-- precision (0.0–1.0): What fraction of returned items are genuinely grounded in the meeting content? Penalize hallucinated signals not supported by the expected set or the transcript.
-- schema (0.0–1.0): Are enum values correct? (severity: high/medium/low, type: expansion/workflow/lateral, relationship: client/colleague/stakeholder/vendor/unknown)
+- precision (0.0–1.0): What fraction of returned items are genuinely grounded in the meeting content? Penalize hallucinated signals not supported by the expected set.
+- schema (0.0–1.0): Are enum values correct? ({schema_hint})
 
-Score 1.0 if the category has no expected items AND no returned items (vacuously correct).
+Score 1.0 across all dimensions if there are no expected items AND no returned items (vacuously correct).
 Score completeness=0.0 only if NO expected signals were found at all.
 
 Output ONLY valid JSON — no markdown fences, no explanation outside the JSON:
-{
-  "entities":      {"completeness": 0.0, "faithfulness": 0.0, "precision": 0.0, "schema": 0.0, "reasoning": "..."},
-  "risks":         {"completeness": 0.0, "faithfulness": 0.0, "precision": 0.0, "schema": 0.0, "reasoning": "..."},
-  "opportunities": {"completeness": 0.0, "faithfulness": 0.0, "precision": 0.0, "schema": 0.0, "reasoning": "..."},
-  "tasks":         {"completeness": 0.0, "faithfulness": 0.0, "precision": 0.0, "schema": 0.0, "reasoning": "..."}
-}
+{{"completeness": 0.0, "faithfulness": 0.0, "precision": 0.0, "schema": 0.0, "reasoning": "..."}}
 """
 
+_SCHEMA_HINTS = {
+    "entities": "relationship: client/colleague/stakeholder/vendor/unknown",
+    "risks": "severity: high/medium/low",
+    "opportunities": "type: expansion/workflow/lateral",
+    "tasks": "owner should be a person name or null, description should be actionable",
+}
+
+
 # ---------------------------------------------------------------------------
-# Prompt builder
+# Per-category prompt builder
 # ---------------------------------------------------------------------------
 
 
-def _build_judge_prompt(
-    returned: dict,
-    expected_entities: list[ExpectedEntity],
-    expected_risks: list[ExpectedRisk],
-    expected_opportunities: list[ExpectedOpportunity],
-    expected_tasks: list[ExpectedTask],
-) -> str:
-    """Build the structured comparison prompt for the judge.
+def _build_category_prompt(
+    category: str,
+    expected_items: list,
+    returned_items: list[dict],
+) -> tuple[str, str]:
+    """Build system + user prompts for judging one category.
 
     Args:
-        returned: Raw JSON response from the ingest endpoint.
-        expected_entities: Ground-truth entity list.
-        expected_risks: Ground-truth risk list.
-        expected_opportunities: Ground-truth opportunity list.
-        expected_tasks: Ground-truth task list.
+        category: One of entities/risks/opportunities/tasks.
+        expected_items: Ground-truth list for this category.
+        returned_items: Extracted items from the ingest endpoint.
 
     Returns:
-        Formatted multi-section string showing expected vs returned signals.
+        (system_prompt, user_prompt)
     """
-    lines: list[str] = ["=== EXPECTED SIGNALS ===", ""]
+    system = _JUDGE_SYSTEM_TEMPLATE.format(
+        category=category,
+        category_upper=category.upper(),
+        schema_hint=_SCHEMA_HINTS.get(category, "fields should match expected types"),
+    )
 
-    lines.append("ENTITIES:")
-    for e in expected_entities:
-        suffix = f", title: {e.title}" if e.title else ""
-        lines.append(f"  - {e.name} ({e.relationship}){suffix}")
+    lines: list[str] = [f"=== EXPECTED {category.upper()} ===", ""]
 
-    lines.append("\nRISKS:")
-    for r in expected_risks:
-        lines.append(f"  - [{r.severity}] keywords: {', '.join(r.keywords)}")
+    if category == "entities":
+        for e in expected_items:
+            suffix = f", title: {e.title}" if e.title else ""
+            lines.append(f"  - {e.name} ({e.relationship}){suffix}")
+    elif category == "risks":
+        for r in expected_items:
+            lines.append(f"  - [{r.severity}] {r.description}")
+    elif category == "opportunities":
+        for o in expected_items:
+            lines.append(f"  - [{o.type}] {o.description}")
+    elif category == "tasks":
+        for t in expected_items:
+            owner = f" → {t.owner}" if t.owner else ""
+            lines.append(f"  - {t.description}{owner}")
 
-    lines.append("\nOPPORTUNITIES:")
-    for o in expected_opportunities:
-        lines.append(f"  - [{o.type}] keywords: {', '.join(o.keywords)}")
+    lines.extend(["", f"=== RETURNED {category.upper()} ===", ""])
 
-    lines.append("\nTASKS:")
-    for t in expected_tasks:
-        owner = f" → {t.owner}" if t.owner else ""
-        lines.append(f"  - keywords: {', '.join(t.keywords)}{owner}")
+    if category == "entities":
+        for e in returned_items:
+            lines.append(
+                f"  - {e.get('name')} ({e.get('relationship')}) title={e.get('title')}"
+            )
+    elif category == "risks":
+        for r in returned_items:
+            lines.append(f"  - [{r.get('severity')}] {r.get('description', '')[:100]}")
+    elif category == "opportunities":
+        for o in returned_items:
+            lines.append(f"  - [{o.get('type')}] {o.get('description', '')[:100]}")
+    elif category == "tasks":
+        for t in returned_items:
+            owner = f" → {t.get('owner')}" if t.get("owner") else ""
+            lines.append(f"  - {t.get('description', '')[:100]}{owner}")
 
-    lines.append("\n=== RETURNED SIGNALS ===\n")
-
-    lines.append("ENTITIES:")
-    for e in returned.get("entities", []):
-        lines.append(
-            f"  - {e.get('name')} ({e.get('relationship')}) title={e.get('title')}"
-        )
-
-    lines.append("\nRISKS:")
-    for r in returned.get("risks", []):
-        lines.append(f"  - [{r.get('severity')}] {r.get('description', '')[:100]}")
-
-    lines.append("\nOPPORTUNITIES:")
-    for o in returned.get("opportunities", []):
-        lines.append(f"  - [{o.get('type')}] {o.get('description', '')[:100]}")
-
-    lines.append("\nTASKS:")
-    for t in returned.get("tasks", []):
-        owner = f" → {t.get('owner')}" if t.get("owner") else ""
-        lines.append(f"  - {t.get('description', '')[:100]}{owner}")
-
-    return "\n".join(lines)
+    return system, "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -191,14 +193,10 @@ def _build_judge_prompt(
 # ---------------------------------------------------------------------------
 
 
-def _parse_judge_response(
+def _parse_category_response(
     raw_content: str, thinking_content: str = ""
 ) -> tuple[dict, str]:
-    """Extract thinking and JSON scores from qwen3 response.
-
-    Handles two formats:
-    1. Thinking in separate 'thinking' field (newer Ollama)
-    2. <think>...</think> tags embedded in content
+    """Extract thinking and JSON scores from a single-category qwen3 response.
 
     Args:
         raw_content: The message content string from the chat completion.
@@ -210,44 +208,36 @@ def _parse_judge_response(
     Raises:
         ValueError: If no valid JSON block is found in the response.
     """
-    # Extract <think> block if present in content
     think_match = re.search(r"<think>(.*?)</think>", raw_content, re.DOTALL)
     if think_match:
         thinking_content = think_match.group(1).strip()
-        raw_content = raw_content[think_match.end() :].strip()
+        raw_content = raw_content[think_match.end():].strip()
 
-    # Extract JSON — find first { to last }
     start = raw_content.find("{")
     end = raw_content.rfind("}") + 1
     if start == -1 or end == 0:
-        raise ValueError(
-            f"No JSON found in judge response: {raw_content[:200]}"
-        )
+        raise ValueError(f"No JSON found in judge response: {raw_content[:200]}")
 
     scores: dict = json.loads(raw_content[start:end])
     return scores, thinking_content
 
 
-def _make_judgment(
-    scores: dict, category: str, thinking: str
-) -> CategoryJudgment:
-    """Build a CategoryJudgment from the parsed scores dict.
+def _make_judgment(scores: dict, thinking: str) -> CategoryJudgment:
+    """Build a CategoryJudgment from a single-category scores dict.
 
     Args:
-        scores: Full scores dict from the judge (all four categories).
-        category: Key to extract (entities / risks / opportunities / tasks).
-        thinking: Raw thinking content shared across all categories.
+        scores: Scores dict for one category (completeness/faithfulness/precision/schema/reasoning).
+        thinking: Raw thinking content for this category.
 
     Returns:
         CategoryJudgment with clamped float scores.
     """
-    cat = scores.get(category, {})
     return CategoryJudgment(
-        completeness=float(cat.get("completeness", 0.0)),
-        faithfulness=float(cat.get("faithfulness", 0.0)),
-        precision=float(cat.get("precision", 0.0)),
-        schema_score=float(cat.get("schema", 0.0)),
-        reasoning=cat.get("reasoning", ""),
+        completeness=float(scores.get("completeness", 0.0)),
+        faithfulness=float(scores.get("faithfulness", 0.0)),
+        precision=float(scores.get("precision", 0.0)),
+        schema_score=float(scores.get("schema", 0.0)),
+        reasoning=scores.get("reasoning", ""),
         thinking=thinking,
     )
 
@@ -291,6 +281,100 @@ def init_tracer(phoenix_endpoint: str = "http://localhost:6006/v1/traces") -> No
 
 
 # ---------------------------------------------------------------------------
+# Per-category scoring
+# ---------------------------------------------------------------------------
+
+
+async def _judge_one_category(
+    case_id: str,
+    category: str,
+    expected_items: list,
+    returned_items: list[dict],
+    model: str,
+    ollama_base: str,
+) -> CategoryJudgment:
+    """Score one extraction category using the judge LLM.
+
+    Args:
+        case_id: Identifier for the eval case (used in span name).
+        category: One of entities/risks/opportunities/tasks.
+        expected_items: Ground-truth list for this category.
+        returned_items: Extracted items from the ingest endpoint.
+        model: Ollama model name.
+        ollama_base: Ollama base URL (no /v1 suffix).
+
+    Returns:
+        CategoryJudgment. On error, returns all-zero judgment with error set.
+    """
+    system, user_msg = _build_category_prompt(category, expected_items, returned_items)
+
+    with _tracer.start_as_current_span(f"judge.{case_id}.{category}") as span:
+        span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.LLM.value)
+        span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model)
+        span.set_attribute(SpanAttributes.INPUT_VALUE, user_msg[:2000])
+        span.set_attribute("eval.case_id", case_id)
+        span.set_attribute("eval.category", category)
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    f"{ollama_base}/api/chat",
+                    json={
+                        "model": model,
+                        "think": True,
+                        "stream": False,
+                        "options": {
+                            "temperature": 0,
+                            "num_predict": 1500,  # single category needs less headroom
+                        },
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user_msg},
+                        ],
+                    },
+                    timeout=300.0,
+                )
+                resp.raise_for_status()
+                payload = resp.json()
+        except httpx.HTTPStatusError as exc:
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            return _zero_judgment(reasoning=f"HTTP {exc.response.status_code}: {exc.response.text[:200]}")
+        except Exception as exc:  # noqa: BLE001
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            return _zero_judgment(reasoning=f"{type(exc).__name__}: {exc}")
+
+        message = payload.get("message", {})
+        raw_content: str = message.get("content") or ""
+        thinking_field: str = message.get("thinking") or ""
+
+        try:
+            scores, thinking = _parse_category_response(raw_content, thinking_field)
+        except (ValueError, json.JSONDecodeError) as exc:
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            return _zero_judgment(
+                thinking=thinking_field,
+                reasoning=f"Parse error: {exc} | raw (first 400): {raw_content[:400]}",
+            )
+
+        result = _make_judgment(scores, thinking)
+        span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps({
+            "mean": result.mean,
+            "completeness": result.completeness,
+            "faithfulness": result.faithfulness,
+            "precision": result.precision,
+            "schema": result.schema_score,
+            "reasoning": result.reasoning[:200],
+        }))
+        span.set_attribute(f"eval.{category}.mean", result.mean)
+        span.set_attribute(f"eval.{category}.completeness", result.completeness)
+        span.set_attribute(f"eval.{category}.faithfulness", result.faithfulness)
+        span.set_attribute(f"eval.{category}.precision", result.precision)
+        span.set_attribute(f"eval.{category}.schema", result.schema_score)
+        span.set_status(Status(StatusCode.OK))
+        return result
+
+
+# ---------------------------------------------------------------------------
 # Core scoring function
 # ---------------------------------------------------------------------------
 
@@ -305,12 +389,10 @@ async def judge_case(
     model: str = "qwen3:8b",
     base_url: str = "http://localhost:11434",
 ) -> JudgeCaseResult:
-    """Score one eval case using a local LLM judge with thinking mode.
+    """Score one eval case using a local LLM judge — one call per category.
 
     Uses the native Ollama /api/chat endpoint (not OpenAI-compat) so that
     think:true is honoured and the thinking field is always populated.
-    The /v1/chat/completions endpoint silently ignores think: at temperature=0,
-    causing qwen3 to put output in the thinking field and return null content.
 
     Args:
         case_id: Identifier for the eval case.
@@ -324,99 +406,31 @@ async def judge_case(
 
     Returns:
         JudgeCaseResult with per-category scores and judge reasoning.
-        On any error, returns a result with all scores 0.0 and error set.
     """
-    user_msg = _build_judge_prompt(
-        returned,
-        expected_entities,
-        expected_risks,
-        expected_opportunities,
-        expected_tasks,
-    )
-
-    # Normalise: strip /v1 suffix if the caller passed an OpenAI-compat URL
     ollama_base = base_url.rstrip("/").removesuffix("/v1")
 
-    with _tracer.start_as_current_span(f"judge.{case_id}") as span:
-        span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.LLM.value)
-        span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model)
-        span.set_attribute(SpanAttributes.INPUT_VALUE, user_msg[:2000])
-        span.set_attribute("eval.case_id", case_id)
+    # Sequential: Ollama serialises requests to a single model anyway
+    entities = await _judge_one_category(
+        case_id, "entities", expected_entities,
+        returned.get("entities", []), model, ollama_base,
+    )
+    risks = await _judge_one_category(
+        case_id, "risks", expected_risks,
+        returned.get("risks", []), model, ollama_base,
+    )
+    opportunities = await _judge_one_category(
+        case_id, "opportunities", expected_opportunities,
+        returned.get("opportunities", []), model, ollama_base,
+    )
+    tasks = await _judge_one_category(
+        case_id, "tasks", expected_tasks,
+        returned.get("tasks", []), model, ollama_base,
+    )
 
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{ollama_base}/api/chat",
-                    json={
-                        "model": model,
-                        "think": True,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0,
-                            "num_predict": 3000,  # 4 categories × reasoning needs headroom
-                        },
-                        "messages": [
-                            {"role": "system", "content": _JUDGE_SYSTEM},
-                            {"role": "user", "content": user_msg},
-                        ],
-                    },
-                    timeout=600.0,
-                )
-                resp.raise_for_status()
-                payload = resp.json()
-        except httpx.HTTPStatusError as exc:
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
-            return JudgeCaseResult(
-                case_id=case_id,
-                entities=_zero_judgment(),
-                risks=_zero_judgment(),
-                opportunities=_zero_judgment(),
-                tasks=_zero_judgment(),
-                error=f"HTTP {exc.response.status_code}: {exc.response.text[:200]}",
-            )
-        except Exception as exc:  # noqa: BLE001
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
-            return JudgeCaseResult(
-                case_id=case_id,
-                entities=_zero_judgment(),
-                risks=_zero_judgment(),
-                opportunities=_zero_judgment(),
-                tasks=_zero_judgment(),
-                error=f"{type(exc).__name__}: {exc}",
-            )
-
-        # Native /api/chat response: {"message": {"role": "...", "content": "...", "thinking": "..."}}
-        message = payload.get("message", {})
-        raw_content: str = message.get("content") or ""
-        thinking_field: str = message.get("thinking") or ""
-
-        try:
-            scores, thinking = _parse_judge_response(raw_content, thinking_field)
-        except (ValueError, json.JSONDecodeError) as exc:
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
-            return JudgeCaseResult(
-                case_id=case_id,
-                entities=_zero_judgment(thinking=thinking_field),
-                risks=_zero_judgment(thinking=thinking_field),
-                opportunities=_zero_judgment(thinking=thinking_field),
-                tasks=_zero_judgment(thinking=thinking_field),
-                error=f"Parse error: {exc} | raw (first 400): {raw_content[:400]}",
-            )
-
-        result = JudgeCaseResult(
-            case_id=case_id,
-            entities=_make_judgment(scores, "entities", thinking),
-            risks=_make_judgment(scores, "risks", thinking),
-            opportunities=_make_judgment(scores, "opportunities", thinking),
-            tasks=_make_judgment(scores, "tasks", thinking),
-        )
-        span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps({
-            "macro_score": result.macro_score,
-            "entities": result.entities.mean,
-            "risks": result.risks.mean,
-            "opportunities": result.opportunities.mean,
-            "tasks": result.tasks.mean,
-        }))
-        span.set_attribute("eval.macro_score", result.macro_score)
-        span.set_status(Status(StatusCode.OK))
-        return result
+    return JudgeCaseResult(
+        case_id=case_id,
+        entities=entities,
+        risks=risks,
+        opportunities=opportunities,
+        tasks=tasks,
+    )
