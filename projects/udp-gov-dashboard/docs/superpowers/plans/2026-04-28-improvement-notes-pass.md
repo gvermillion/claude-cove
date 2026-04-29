@@ -448,22 +448,22 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
 
 3. **Lighten governed/live rect fills** — change `#1a0f0a` → `#2a1a14` (visible amber-tinted) and `#1a0a0a` → `#2a1414` (visible red-tinted). Keep stroke colors identical.
 
-- [ ] **Step 1: Inspect current SDLCDiagram lane B paths and rect fills**
+- [x] **Step 1: Inspect current SDLCDiagram lane B paths and rect fills**
 
-- [ ] **Step 2: Apply geometry fix to lane B endpoints**
+- [x] **Step 2: Apply geometry fix to lane B endpoints**
 
-- [ ] **Step 3: Bump edge contrast + lighten rect fills**
+- [x] **Step 3: Bump edge contrast + lighten rect fills**
 
-- [ ] **Step 4: Verify visually**
+- [x] **Step 4: Verify visually**
   Run dev server (`pnpm dev`), navigate to the page that renders SDLCDiagram, confirm:
   - Lane B pulse arrives precisely at the static edge endpoint (no jog)
   - Post-merge edges are clearly visible
   - GOVERNED and LIVE rect outlines + fills are legible against `#080808`
 
-- [ ] **Step 5: Verify build**
+- [x] **Step 5: Verify build**
   Run: `pnpm exec tsc --noEmit`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git commit -m "fix(udp-dashboard): align SDLC Lane B endpoints + improve dark-mode contrast"
   ```
@@ -472,6 +472,8 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
 - Pulse + edge share endpoint
 - All edges visible
 - Rects legible
+
+**Status:** Completed in commit `81df5f4` (initial spec) + follow-up `b7c9f11` (sp-post pulse alignment + bumped fill contrast `#3a2418` / `#3a1818`). Code-quality re-review approved. The follow-up addressed a critical bug introduced by the initial fix (sp-post pulse start was 10px off the new shared anchor) and tightened fill contrast beyond spec values to actually achieve the visibility goal.
 
 ---
 
