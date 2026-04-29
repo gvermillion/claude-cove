@@ -5,7 +5,7 @@ interface EntNode {
   edges: string[];
 }
 
-const ENT_DATA: Record<string, EntNode> = {
+const ENT_DATA_ENG: Record<string, EntNode> = {
   okta: {
     content: (
       <>
@@ -256,6 +256,114 @@ const ENT_DATA: Record<string, EntNode> = {
   },
 };
 
+const ENT_DATA_EXEC: typeof ENT_DATA_ENG = {
+  okta: {
+    edges: ENT_DATA_ENG.okta.edges,
+    content: (
+      <>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span className="text-white font-semibold">Identity input.</span>{' '}
+          Who works here, and what teams they belong to.
+        </p>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          Owned by IT/IAM. Already maintained today as part of standard SSO
+          provisioning — governance reuses it.
+        </p>
+      </>
+    ),
+  },
+  sf: {
+    edges: ENT_DATA_ENG.sf.edges,
+    content: (
+      <>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span className="text-white font-semibold">Ownership input.</span>{' '}
+          Which records belong to which person or team.
+        </p>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          Owned by Sales Ops and Domain Stewards. Already maintained as part of
+          day-to-day account management — governance reuses it.
+        </p>
+      </>
+    ),
+  },
+  'future-src': {
+    edges: ENT_DATA_ENG['future-src'].edges,
+    content: (
+      <>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span className="text-white font-semibold">Any future identity or ownership system.</span>{' '}
+          New HR systems, partner directories, ticketing platforms.
+        </p>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          Adding a new source feeds the same central rule book — every existing
+          enforcement point inherits the change automatically.
+        </p>
+      </>
+    ),
+  },
+  pdp: {
+    edges: ENT_DATA_ENG.pdp.edges,
+    content: (
+      <>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span className="text-white font-semibold">The single rule book.</span>{' '}
+          One canonical source of truth for who can see what.
+        </p>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          Every enforcement point — Snowflake, S3, AI agents — reads from here.
+          Change a rule once; it propagates everywhere.
+        </p>
+      </>
+    ),
+  },
+  snow: {
+    edges: ENT_DATA_ENG.snow.edges,
+    content: (
+      <>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span className="text-white font-semibold">Snowflake — analyst access.</span>{' '}
+          Dashboards and queries respect the rule book at query time.
+        </p>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          Invisible to the analyst. They write a query; the platform filters
+          the rows they&apos;re not entitled to see.
+        </p>
+      </>
+    ),
+  },
+  cloud: {
+    edges: ENT_DATA_ENG.cloud.edges,
+    content: (
+      <>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span className="text-white font-semibold">AWS — services and data lakes.</span>{' '}
+          The same rule book governs S3 buckets and cloud workloads.
+        </p>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          One identity, one rule book — applied consistently across the cloud
+          estate.
+        </p>
+      </>
+    ),
+  },
+  'future-pep': {
+    edges: ENT_DATA_ENG['future-pep'].edges,
+    content: (
+      <>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span className="text-white font-semibold">Any future enforcement point.</span>{' '}
+          A new BI tool, a custom service, an AI agent.
+        </p>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          Plug it in and it inherits every existing access rule on day one.
+          No parallel governance system to build.
+        </p>
+      </>
+    ),
+  },
+};
+
 const ALL_ENT_EDGES = ['edge-okta', 'edge-sf', 'edge-future-src', 'edge-snow', 'edge-cloud', 'edge-future-pep'];
 
 const FUTURE_NODE_MAP: Record<string, string> = {
@@ -263,13 +371,24 @@ const FUTURE_NODE_MAP: Record<string, string> = {
   'future-pep': 'future-pep',
 };
 
+type EntMode = 'exec' | 'eng';
+
+interface EntitlementsDiagramProps {
+  mode?: EntMode;
+}
+
 /**
  * EntitlementsDiagram — interactive SVG visualization of the governance automation pipeline.
  *
  * Shows Sources (Okta, Salesforce) feeding the ENTITLEMENTS PDP, which drives all PEPs.
  * Hover any node to highlight its edges and show a detail panel with sequence diagrams.
+ *
+ * @param mode - 'eng' (default) shows technical detail; 'exec' shows business narrative.
  */
-export function EntitlementsDiagram(): React.ReactElement {
+export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
+  mode = 'eng',
+}) => {
+  const ENT_DATA = mode === 'exec' ? ENT_DATA_EXEC : ENT_DATA_ENG;
   const [hovered, setHovered] = useState<string | null>(null);
 
   function edgeOpacity(id: string, base = 0.3): number {
