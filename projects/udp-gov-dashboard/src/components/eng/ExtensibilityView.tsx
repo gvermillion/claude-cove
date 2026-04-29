@@ -1,10 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Globe,
-  Database,
-  Network,
-  UserCheck,
-} from 'lucide-react';
+import { Globe } from 'lucide-react';
 import {
   SectionHeader,
   CalloutBox,
@@ -16,83 +11,258 @@ import {
 import { HubSpokeDiagram } from '../diagrams';
 
 /* ------------------------------------------------------------------ */
-/*  "Adding a New PEP" walkthrough steps                               */
+/*  Recipe data types                                                  */
 /* ------------------------------------------------------------------ */
 
-const newPepSteps = [
+type RecipeStep = {
+  title: string;
+  body: React.ReactNode;
+};
+
+type Recipe = {
+  key: 'aws-s3' | 'bedrock' | 'workday-pdp';
+  label: string;
+  title: string;
+  role: string;
+  color: 'blue' | 'emerald' | 'amber';
+  steps: RecipeStep[];
+  code?: { language: string; content: string };
+};
+
+/* ------------------------------------------------------------------ */
+/*  Recipe definitions                                                 */
+/* ------------------------------------------------------------------ */
+
+const RECIPES: Recipe[] = [
   {
-    label: 'Mirror ENTITLEMENTS',
+    key: 'aws-s3',
+    label: 'AWS S3 (Lake Formation)',
+    title: 'Recipe A — Add AWS S3 (Lake Formation) as a PEP',
+    role: 'PEP',
     color: 'blue',
-    title: 'Step 1 — Mirror ENTITLEMENTS',
-    body: (
-      <>
-        <p>Create a read replica or API endpoint so the new platform can query <C>ENTITLEMENTS</C>.</p>
-        <p className="mt-2">Options: S3 parquet mirror (batch), Snowflake External API (real-time), or a lightweight REST proxy. The schema is identical regardless of transport.</p>
-      </>
-    ),
+    steps: [
+      {
+        title: 'Step 1 — Mirror ENTITLEMENTS to S3',
+        body: (
+          <>
+            <p>
+              Run <C>COPY INTO @s3_stage/entitlements/</C> from the <C>ENTITLEMENTS</C> table,
+              writing Parquet files. Schedule via a Snowflake Task or an Airflow DAG on your
+              preferred cadence (e.g., hourly).
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 2 — Create Glue table + Lake Formation permissions',
+        body: (
+          <>
+            <p>
+              Create an AWS Glue table <C>entitlements_mirror</C> pointing at the Parquet S3
+              location. Grant <C>SELECT</C> on that table to the IAM role used by governed
+              dataset readers via Lake Formation.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 3 — Attach a Row Filter to each governed dataset',
+        body: (
+          <>
+            <p>
+              For each governed S3 dataset, create a Lake Formation Row Filter that joins to{' '}
+              <C>entitlements_mirror</C> on <C>caller_identity()</C> → <C>user_id</C>, filtering
+              on <C>data_domain</C> and <C>region</C>. See the filter template below.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 4 — Verify by impersonation',
+        body: (
+          <>
+            <p>
+              Test via <C>aws sts assume-role</C> as a user with <C>region='West'</C>. That user
+              reading a governed S3 dataset should receive only West rows. A user outside that
+              region should receive an empty result set — not an error.
+            </p>
+          </>
+        ),
+      },
+    ],
+    code: {
+      language: 'sql',
+      content: `-- Lake Formation row filter (pseudo)
+CREATE FILTER pep_west_only ON s3.governed_dataset
+AS (
+  caller_identity() IN (
+    SELECT user_id FROM entitlements_mirror
+    WHERE data_domain = 'SALES'
+      AND region = current_dataset_region()
+  )
+);`,
+    },
   },
   {
-    label: 'Implement Lookup',
+    key: 'bedrock',
+    label: 'Bedrock Agent',
+    title: 'Recipe B — Add Bedrock Agent as a PEP',
+    role: 'PEP',
     color: 'emerald',
-    title: 'Step 2 — Implement Lookup',
-    body: (
-      <>
-        <p>Add the <C>ENTITLEMENTS</C> lookup to the platform's policy/authorization layer.</p>
-        <p className="mt-2">The lookup resolves the caller's identity to entitled data domains, sensitivity levels, and regions. This is the only integration code required — typically 10–30 lines.</p>
-      </>
-    ),
+    steps: [
+      {
+        title: 'Step 1 — Expose ENTITLEMENTS as a Lambda function',
+        body: (
+          <>
+            <p>
+              Create a Lambda that accepts a caller identity and returns their entitled{' '}
+              <C>data_domains</C>, <C>regions</C>, and <C>unmask_pii</C> flag from the{' '}
+              <C>ENTITLEMENTS</C> table. Cache responses for 60 s to reduce Snowflake round
+              trips.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 2 — Declare an action group in Bedrock',
+        body: (
+          <>
+            <p>
+              Add an <C>entitlements_lookup</C> tool to the agent's action group. The tool
+              schema declares inputs (caller session) and outputs (<C>data_domains</C>,{' '}
+              <C>regions</C>, <C>unmask_pii</C>). See the action group snippet below.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 3 — Constrain the system prompt',
+        body: (
+          <>
+            <p>
+              Instruct the agent to call <C>entitlements_lookup</C> before any tool that
+              fetches data, then restrict context to the returned domains and regions. This
+              is the only prompt-level change required.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 4 — Add a Bedrock Guardrail',
+        body: (
+          <>
+            <p>
+              Create a guardrail that denies the topic <C>pii_topics</C> unless{' '}
+              <C>unmask_pii=true</C> is returned by the lookup. This provides a second
+              enforcement layer independent of the prompt.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 5 — Test by entitlement gap',
+        body: (
+          <>
+            <p>
+              Invoke the agent as a user without <C>region='West'</C> and ask about a West
+              deal. The agent should refuse and cite the entitlement gap — not hallucinate
+              the restricted data.
+            </p>
+          </>
+        ),
+      },
+    ],
+    code: {
+      language: 'json',
+      content: `{
+  "actionGroup": "entitlements_lookup",
+  "description": "Returns the caller's entitled domains, regions, and PII unmask flag",
+  "apiSchema": {
+    "openapi": "3.0",
+    "paths": { "/lookup": { "get": { "..." } } }
+  },
+  "guardrails": [
+    {
+      "type": "topic_deny",
+      "topic": "pii_topics",
+      "unless": "unmask_pii=true"
+    }
+  ]
+}`,
+    },
   },
   {
-    label: 'Done',
-    color: 'emerald',
-    title: 'Step 3 — Done',
-    body: (
-      <>
-        <p>Existing entitlements apply immediately. Every user's access grants propagate to the new platform without any new mappings or logic.</p>
-        <p className="mt-2">When IT/IAM updates an Okta group or a Domain Steward changes a Salesforce ownership record, the new PEP inherits those changes automatically at the next sync cycle.</p>
-      </>
-    ),
+    key: 'workday-pdp',
+    label: 'Workday → PDP (HR)',
+    title: 'Recipe C — Add a New PDP Source (Workday for HR Ownership)',
+    role: 'PDP Source',
+    color: 'amber',
+    steps: [
+      {
+        title: 'Step 1 — Define identity mapping',
+        body: (
+          <>
+            <p>
+              Map Workday's <C>worker_id</C> to the existing <C>user_id</C> in{' '}
+              <C>ENTITLEMENTS</C>. This is a design decision, not code — document which
+              Workday field corresponds to each ENTITLEMENTS column before writing ELT.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 2 — Write Workday → ENTITLEMENTS_STAGING ELT',
+        body: (
+          <>
+            <p>
+              Build the Workday → <C>ENTITLEMENTS_STAGING</C> ELT job. The existing
+              promotion stored procedure handles schema validation, orphan-reference checks,
+              and rejection of malformed rows before merging to the live table.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 3 — Register Workday as authoritative for HR rows',
+        body: (
+          <>
+            <p>
+              In the staging table metadata, mark Workday as the authoritative source for{' '}
+              <C>data_domain='HR'</C> rows. This prevents other PDP sources from overwriting
+              HR ownership records during promotion.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Step 4 — Promote; all PEPs inherit automatically',
+        body: (
+          <>
+            <p>
+              Run the promotion procedure. All enforcement points — Snowflake RAPs, S3 Lake
+              Formation row filters, and Bedrock guardrails — read the same{' '}
+              <C>ENTITLEMENTS</C> table. No PEP-level changes are required.
+            </p>
+          </>
+        ),
+      },
+    ],
+    // No code blob for Recipe C — data-pipeline plumbing.
   },
 ];
 
 /* ------------------------------------------------------------------ */
-/*  "Adding a New PDP Source" walkthrough steps                        */
+/*  Comparison matrix data                                             */
 /* ------------------------------------------------------------------ */
 
-const newPdpSteps = [
-  {
-    label: 'Map Identity',
-    color: 'amber',
-    title: 'Step 1 — Map Identity',
-    body: (
-      <>
-        <p>Define how the new source's identity model maps to <C>ENTITLEMENTS</C> columns (<C>USER_ID</C>, <C>DATA_DOMAIN</C>, <C>REGION</C>).</p>
-        <p className="mt-2">This is a design decision, not code. Document which field in the source system corresponds to each ENTITLEMENTS column.</p>
-      </>
-    ),
-  },
-  {
-    label: 'Build ELT',
-    color: 'emerald',
-    title: 'Step 2 — Build ELT',
-    body: (
-      <>
-        <p>Write to <C>ENTITLEMENTS_STAGING</C> with schema validation. The promotion procedure validates types, checks for orphan references, and rejects malformed rows before merging to the live table.</p>
-        <p className="mt-2">Standard ELT pattern — no custom framework. The same promotion stored procedure handles all sources.</p>
-      </>
-    ),
-  },
-  {
-    label: 'Done',
-    color: 'emerald',
-    title: 'Step 3 — Done',
-    body: (
-      <>
-        <p>All existing PEPs automatically enforce the new entitlements. No changes to Snowflake RAPs, S3 Lake Formation policies, or Bedrock guardrails.</p>
-        <p className="mt-2">The new PDP source's entitlements are indistinguishable from existing ones — every enforcement point reads the same unified table.</p>
-      </>
-    ),
-  },
+const MATRIX_COLUMNS = ['Aspect', 'Snowflake (RAPs)', 'AWS S3 (Lake Formation)', 'Bedrock'];
+
+const MATRIX_DATA: string[][] = [
+  ['Source of truth', 'ENTITLEMENTS table', 'entitlements_mirror (Glue)', 'Lambda over ENTITLEMENTS'],
+  ['Identity propagation', 'current_user()', 'caller_identity()', 'invoker session'],
+  ['Filter mechanism', 'Row Access Policy', 'Row Filter Expression', 'System prompt + guardrail'],
+  ['Update latency', 'Real-time', 'Refresh cadence (mirror)', 'TTL-bound (lookup cache)'],
+  ['New addition', 'None — already wired', 'Mirror + Glue table + row filter', 'Lambda + action group'],
 ];
 
 /* ------------------------------------------------------------------ */
@@ -100,8 +270,27 @@ const newPdpSteps = [
 /* ------------------------------------------------------------------ */
 
 const ExtensibilityView = () => {
-  const [pepStep, setPepStep] = useState(0);
-  const [pdpStep, setPdpStep] = useState(0);
+  const [activeRecipe, setActiveRecipe] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
+
+  const recipe = RECIPES[activeRecipe];
+
+  const handleRecipeClick = (index: number) => {
+    setActiveRecipe(index);
+    setActiveStep(0);
+  };
+
+  const colorAccent: Record<Recipe['color'], string> = {
+    blue: 'text-blue-400',
+    emerald: 'text-emerald-400',
+    amber: 'text-amber-400',
+  };
+
+  const activeBorderBg: Record<Recipe['color'], string> = {
+    blue: 'border-blue-600/40 bg-blue-600/10',
+    emerald: 'border-emerald-600/40 bg-emerald-600/10',
+    amber: 'border-amber-600/40 bg-amber-600/10',
+  };
 
   return (
     <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
@@ -112,99 +301,142 @@ const ExtensibilityView = () => {
         badge="Section 8"
       />
 
-      {/* ── Hub-and-Spoke Diagram ── */}
+      {/* Hub-and-Spoke Diagram */}
       <HubSpokeDiagram mode="eng" />
 
-      {/* ── Adding a New PEP walkthrough ── */}
+      {/* Three Concrete Recipes */}
       <div className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-6">
-        <h3 className="text-white font-bold text-sm uppercase tracking-tight">
-          Adding a New Enforcement Point (PEP)
-        </h3>
+        <div>
+          <h3 className="text-white font-bold text-sm uppercase tracking-tight">
+            Extension Recipes
+          </h3>
+          <p className="text-xs text-gray-400 leading-relaxed mt-1">
+            Select a recipe to see a concrete, step-by-step implementation guide.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
-          <div>
-            <StepSidebar
-              steps={newPepSteps.map((s) => ({ label: s.label, color: s.color }))}
-              activeStep={pepStep}
-              onStepClick={setPepStep}
-            />
-            <PrevNextNav
-              current={pepStep}
-              total={newPepSteps.length}
-              onPrev={() => setPepStep((s) => Math.max(0, s - 1))}
-              onNext={() => setPepStep((s) => Math.min(newPepSteps.length - 1, s + 1))}
-            />
+          {/* Recipe selector */}
+          <div className="flex flex-col gap-1">
+            {RECIPES.map((r, i) => {
+              const isActive = i === activeRecipe;
+              return (
+                <button
+                  key={r.key}
+                  onClick={() => handleRecipeClick(i)}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 border ${
+                    isActive
+                      ? `${activeBorderBg[r.color]} shadow-lg`
+                      : 'border-transparent hover:bg-white/[0.03]'
+                  }`}
+                >
+                  <p className={`text-xs font-bold ${isActive ? 'text-white' : 'text-gray-500'}`}>
+                    {r.label}
+                  </p>
+                  <p
+                    className={`text-[10px] mt-0.5 uppercase tracking-wide ${
+                      isActive ? colorAccent[r.color] : 'text-gray-600'
+                    }`}
+                  >
+                    {r.role}
+                  </p>
+                </button>
+              );
+            })}
           </div>
-          <DetailPanel activeKey={pepStep}>
-            <div className="p-4 rounded-xl border border-white/20 bg-white/[0.03] space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-white">{newPepSteps[pepStep].title}</p>
-              <div className="text-xs text-gray-400 leading-relaxed">{newPepSteps[pepStep].body}</div>
+
+          {/* Recipe detail */}
+          <DetailPanel activeKey={activeRecipe}>
+            <div className="space-y-4">
+              <div>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${colorAccent[recipe.color]}`}>
+                  {recipe.role}
+                </p>
+                <p className="text-white font-bold text-sm mt-1">{recipe.title}</p>
+              </div>
+
+              {/* Step sidebar + step detail */}
+              <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4">
+                <div>
+                  <StepSidebar
+                    steps={recipe.steps.map((s) => ({
+                      label: s.title.replace(/^Step \d+ — /, ''),
+                      color: recipe.color,
+                    }))}
+                    activeStep={activeStep}
+                    onStepClick={setActiveStep}
+                  />
+                  <PrevNextNav
+                    current={activeStep}
+                    total={recipe.steps.length}
+                    onPrev={() => setActiveStep((s) => Math.max(0, s - 1))}
+                    onNext={() => setActiveStep((s) => Math.min(recipe.steps.length - 1, s + 1))}
+                  />
+                </div>
+
+                <DetailPanel activeKey={`${activeRecipe}-${activeStep}`}>
+                  <div className="p-4 rounded-xl border border-white/20 bg-white/[0.03] space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-white">
+                      {recipe.steps[activeStep].title}
+                    </p>
+                    <div className="text-xs text-gray-400 leading-relaxed">
+                      {recipe.steps[activeStep].body}
+                    </div>
+                  </div>
+                </DetailPanel>
+              </div>
+
+              {/* Code blob (Recipes A and B only) */}
+              {recipe.code && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                    {recipe.code.language === 'sql' ? 'SQL Template' : 'Config Snippet'}
+                  </p>
+                  <pre className="bg-[#0a0a0a] border border-white/15 rounded-lg p-4 text-xs font-mono text-gray-300 overflow-x-auto leading-relaxed">
+                    {recipe.code.content}
+                  </pre>
+                </div>
+              )}
             </div>
           </DetailPanel>
         </div>
       </div>
 
-      {/* ── Adding a New PDP Source walkthrough ── */}
-      <div className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-6">
-        <h3 className="text-white font-bold text-sm uppercase tracking-tight">
-          Adding a New Policy Source (PDP)
+      {/* PEP Comparison Matrix */}
+      <div className="space-y-3">
+        <h3 className="text-white font-bold text-xs uppercase tracking-widest">
+          PEP Comparison: What&apos;s Reused, What&apos;s Platform-Specific
         </h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          What happens when a new identity or ownership source needs to feed governance? Three steps — all existing enforcement points inherit it automatically.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
-          <div>
-            <StepSidebar
-              steps={newPdpSteps.map((s) => ({ label: s.label, color: s.color }))}
-              activeStep={pdpStep}
-              onStepClick={setPdpStep}
-            />
-            <PrevNextNav
-              current={pdpStep}
-              total={newPdpSteps.length}
-              onPrev={() => setPdpStep((s) => Math.max(0, s - 1))}
-              onNext={() => setPdpStep((s) => Math.min(newPdpSteps.length - 1, s + 1))}
-            />
-          </div>
-          <DetailPanel activeKey={pdpStep}>
-            <div className="p-4 rounded-xl border border-white/20 bg-white/[0.03] space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-white">{newPdpSteps[pdpStep].title}</p>
-              <div className="text-xs text-gray-400 leading-relaxed">{newPdpSteps[pdpStep].body}</div>
-            </div>
-          </DetailPanel>
+        <div className="overflow-x-auto rounded-lg border border-white/20 bg-[#0f0f0f]">
+          <table className="w-full text-left text-sm text-gray-400">
+            <thead className="bg-white/5 text-white">
+              <tr>
+                {MATRIX_COLUMNS.map((col, i) => (
+                  <th key={i} className="px-5 py-3 font-semibold uppercase tracking-wider text-xs">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {MATRIX_DATA.map((row, i) => (
+                <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-5 py-4 leading-relaxed font-semibold text-gray-300">
+                    {row[0]}
+                  </td>
+                  {row.slice(1).map((cell, j) => (
+                    <td key={j} className="px-5 py-4 leading-relaxed font-mono text-xs">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* ── Key properties grid ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          {
-            title: 'Shared Source of Truth',
-            icon: Database,
-            desc: <><C>ENTITLEMENTS</C> is mirrored to S3 or exposed via API. AWS agents and Snowflake read the same data.</>,
-          },
-          {
-            title: 'Policy Parity',
-            icon: Network,
-            desc: <>AWS agents (Bedrock, custom Python services) look up the same <C>ENTITLEMENTS</C> data. No security logic is duplicated.</>,
-          },
-          {
-            title: 'Consistent Identity',
-            icon: UserCheck,
-            desc: <>Okta and Salesforce feed <C>ENTITLEMENTS</C> — not just Snowflake roles. "Region = West" is consistent in a dashboard or an AI agent.</>,
-          },
-        ].map(({ title, icon: Icon, desc }) => (
-          <div key={title} className="bg-[#111] p-5 rounded-lg border border-white/20">
-            <div className="flex items-center gap-2 mb-3">
-              <Icon size={16} className="text-red-500 shrink-0" />
-              <h4 className="text-white font-bold text-xs uppercase tracking-tight">{title}</h4>
-            </div>
-            <p className="text-xs text-gray-400 leading-relaxed">{desc}</p>
-          </div>
-        ))}
-      </div>
-
+      {/* Architecture Guarantee */}
       <CalloutBox title="Architecture Guarantee" variant="emerald">
         <p>
           Because the PDP lives in the Silver Layer and the ELT sources write to it independently of
