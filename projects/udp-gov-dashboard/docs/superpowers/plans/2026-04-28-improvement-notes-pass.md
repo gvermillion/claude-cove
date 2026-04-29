@@ -668,14 +668,14 @@ For each conflict found:
 For each consistent overlap:
 - Leave alone, but note in audit.
 
-- [ ] **Step 1: Implementer reads all views, builds audit table**
+- [x] **Step 1: Implementer reads all views, builds audit table**
 
-- [ ] **Step 2: Resolve conflicts (decide canonical home, edit duplicate sites)**
+- [x] **Step 2: Resolve conflicts (decide canonical home, edit duplicate sites)**
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
   Run: `pnpm exec tsc --noEmit && pnpm build`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git commit -m "refactor(udp-dashboard): de-duplicate cross-view content; canonicalize topic homes"
   ```
@@ -684,6 +684,12 @@ For each consistent overlap:
 - Audit table committed in commit message body
 - No content asserts conflicting facts (e.g., different phase contents, different sandbox controls)
 - Each topic has a single canonical home
+
+**Status:** ✅ Complete — commit `53b16af`. Opus implementer's audit found zero new conflicts initially, but spec-compliance reviewer (Sonnet) caught one missed conflict and one internal inconsistency, both in `ExecSecurityView.tsx`:
+- "Five independent layers" caption on `<DefenseDiagram />` (which has 4) → corrected to "Four"
+- SectionHeader subtitle "Four risks" rendering 5 vulnerability cards → corrected to "Five risks"
+
+All other cross-view overlaps verified consistent: sandbox hardening (5 layers across EngOverview/Sandbox/Enforcement) was already cross-linked in Task 6; PEP list, PDP/PEP architecture, and hub-and-spoke diagram are component-canonicalized via mode-aware components; PII / vulnerabilities / lifecycle topics either single-source or audience/grain splits. Audit table committed in commit body per spec.
 
 ---
 
