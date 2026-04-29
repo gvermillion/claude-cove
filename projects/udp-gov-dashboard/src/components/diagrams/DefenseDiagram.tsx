@@ -166,7 +166,7 @@ export function DefenseDiagram(): React.ReactElement {
 
   function layerOpacity(i: number): number {
     if (hovered === null) return 1;
-    return hovered === i ? 1 : 0.2;
+    return hovered === i ? 1 : 0.45;
   }
 
   return (
@@ -234,7 +234,7 @@ export function DefenseDiagram(): React.ReactElement {
                   <div style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                     background: layer.bgColor,
-                    opacity: hovered === i ? 0.18 : 0.06,
+                    opacity: hovered === i ? 0.2 : 0.1,
                     transition: 'opacity 0.3s',
                   }} />
 

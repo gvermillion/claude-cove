@@ -158,8 +158,8 @@ const SpokeLine = ({
       y1={cy}
       x2={cx + x}
       y2={cy + y}
-      stroke={active ? '#10b981' : '#555'}
-      strokeWidth={active ? 2 : 1.5}
+      stroke={active ? '#10b981' : '#777'}
+      strokeWidth={active ? 2.5 : 1.5}
       strokeDasharray={dashed ? '6 4' : active ? '8 4' : 'none'}
       className="transition-all duration-500"
     >

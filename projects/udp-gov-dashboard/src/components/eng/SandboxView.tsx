@@ -3,7 +3,6 @@ import {
   Cpu,
   RefreshCcw,
   Lock,
-  Zap,
   ArrowRight,
   ChevronDown,
 } from 'lucide-react';
@@ -74,17 +73,26 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
         </h2>
         <p className="text-sm text-gray-300 leading-relaxed max-w-3xl">
           The developer never writes a <C>GRANT</C>, applies a tag, or configures a
-          policy. They write SQL in their sandbox, ask Copilot for routing guidance,
-          and promote via dbt. Security is structural — enforced by schema placement
+          policy. They write SQL in their sandbox, ask Copilot for routing guidance
+          when ready to share, and promote via dbt. Security is structural — enforced by schema placement
           and tag inheritance.
         </p>
       </div>
 
-      {/* Two-Stage Lifecycle — static overview */}
-      <div className="space-y-4">
+      {/* Two-Stage Lifecycle — overview + SDLC diagram + stage cards */}
+      <div className="space-y-6">
         <h3 className="text-base font-bold text-white flex items-center gap-2 uppercase tracking-tight">
           <RefreshCcw size={18} className="text-red-600" /> The Two-Stage Lifecycle
         </h3>
+        <p className="text-sm text-gray-300 leading-relaxed max-w-3xl">
+          Every developer gets a private sandbox schema with full CRUD — no tickets,
+          no admin overhead. When they're ready to share their work, Cortex Copilot
+          analyzes the data and recommends the correct governed schema based on security
+          grain. Writing to that schema automatically triggers governance: dbt post-hooks
+          apply tags, and tag inheritance activates Row Access Policies. The developer
+          never touches a policy.
+        </p>
+        <SDLCDiagram />
         <div className="bg-[#111] border border-white/20 rounded-xl p-8">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 items-center">
             <div className="rounded-xl border border-gray-500/30 bg-white/[0.05] p-6 transition-all duration-300">
@@ -129,8 +137,8 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
                 <div className="space-y-1.5 mt-3 px-1">
                   {SANDBOX_BLOCKED.map((item) => (
                     <div key={item.label}>
-                      <span className="text-xs font-mono text-red-400/60 line-through">{item.label}</span>
-                      <p className="text-[10px] text-red-500/40 leading-tight">{item.detail}</p>
+                      <span className="text-xs font-mono text-red-400 line-through">{item.label}</span>
+                      <p className="text-[10px] text-red-400/60 leading-tight">{item.detail}</p>
                     </div>
                   ))}
                 </div>
@@ -163,22 +171,14 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
               <div className="space-y-1.5">
                 {SANDBOX_PERIMETER_GUARANTEES.map((item) => (
                   <div key={item.label}>
-                    <span className="text-xs font-mono text-red-400/80">{item.label}</span>
-                    <p className="text-[10px] text-red-500/50 leading-tight">{item.detail}</p>
+                    <span className="text-xs font-mono text-red-300">{item.label}</span>
+                    <p className="text-[10px] text-gray-400 leading-tight">{item.detail}</p>
                   </div>
                 ))}
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* SDLC — dual-entrypoint diagram */}
-      <div className="space-y-4">
-        <h3 className="text-base font-bold text-white flex items-center gap-2 uppercase tracking-tight">
-          <Zap size={18} className="text-red-600" /> Developer SDLC — Two Paths to Governance
-        </h3>
-        <SDLCDiagram />
       </div>
 
       {/* Sandbox Hardening Controls — compact summary */}

@@ -391,35 +391,35 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
   const ENT_DATA = mode === 'exec' ? ENT_DATA_EXEC : ENT_DATA_ENG;
   const [hovered, setHovered] = useState<string | null>(null);
 
-  function edgeOpacity(id: string, base = 0.3): number {
+  function edgeOpacity(id: string, base = 0.5): number {
     if (!hovered) return base;
     const active = ENT_DATA[hovered]?.edges ?? [];
-    return active.includes(id) ? 1.0 : 0.1;
+    return active.includes(id) ? 1.0 : 0.25;
   }
 
   function edgeWidth(id: string): number {
     if (!hovered) return 1.5;
     const active = ENT_DATA[hovered]?.edges ?? [];
-    return active.includes(id) ? 2.5 : 1.0;
+    return active.includes(id) ? 2.5 : 1.2;
   }
 
   function futureOpacity(nodeKey: 'future-src' | 'future-pep'): number {
-    if (!hovered) return 0.5;
+    if (!hovered) return 0.55;
     if (hovered === nodeKey) return 1.0;
     if (FUTURE_NODE_MAP[hovered] === nodeKey) return 1.0;
-    return 0.2;
+    return 0.35;
   }
 
   function futureSrcEdgeBase(): number {
-    if (!hovered) return 0.2;
+    if (!hovered) return 0.3;
     const active = ENT_DATA[hovered]?.edges ?? [];
-    return active.includes('edge-future-src') ? 1.0 : 0.1;
+    return active.includes('edge-future-src') ? 1.0 : 0.2;
   }
 
   function futurePepEdgeBase(): number {
-    if (!hovered) return 0.2;
+    if (!hovered) return 0.3;
     const active = ENT_DATA[hovered]?.edges ?? [];
-    return active.includes('edge-future-pep') ? 1.0 : 0.1;
+    return active.includes('edge-future-pep') ? 1.0 : 0.2;
   }
 
   return (
@@ -530,14 +530,14 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
 
             {/* Source nodes */}
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('okta')}>
-              <rect x="50" y="24" width="100" height="40" rx="8" fill="#0a1a0a" stroke="#14532d" strokeWidth="1.5" />
+              <rect x="50" y="24" width="100" height="40" rx="8" fill="#0f2a0f" stroke="#16a34a" strokeWidth="1.5" />
               <text x="100" y="41" textAnchor="middle" fill="#4ade80" fontSize="9" fontWeight="700">OKTA</text>
-              <text x="100" y="54" textAnchor="middle" fill="#999" fontSize="7">Identity Groups</text>
+              <text x="100" y="54" textAnchor="middle" fill="#bbb" fontSize="7">Identity Groups</text>
             </g>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('sf')}>
-              <rect x="270" y="24" width="100" height="40" rx="8" fill="#0a0f1a" stroke="#1e3a8a" strokeWidth="1.5" />
+              <rect x="270" y="24" width="100" height="40" rx="8" fill="#0f1530" stroke="#2563eb" strokeWidth="1.5" />
               <text x="320" y="41" textAnchor="middle" fill="#60a5fa" fontSize="9" fontWeight="700">SALESFORCE</text>
-              <text x="320" y="54" textAnchor="middle" fill="#999" fontSize="7">Account Mapping</text>
+              <text x="320" y="54" textAnchor="middle" fill="#bbb" fontSize="7">Account Mapping</text>
             </g>
             <g
               style={{ cursor: 'pointer', opacity: futureOpacity('future-src') }}
@@ -549,7 +549,7 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
 
             {/* PDP center */}
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('pdp')}>
-              <rect x="135" y="130" width="150" height="60" rx="12" fill="#110a0a" stroke="#991b1b" strokeWidth="2" />
+              <rect x="135" y="130" width="150" height="60" rx="12" fill="#1a0f0f" stroke="#dc2626" strokeWidth="2" />
               <rect x="135" y="130" width="150" height="60" rx="12" fill="none" stroke="#ef4444" strokeWidth="1" opacity=".15">
                 <animate attributeName="opacity" values=".05;.25;.05" dur="3s" repeatCount="indefinite" />
               </rect>
@@ -560,15 +560,15 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
 
             {/* PEP nodes */}
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('snow')}>
-              <rect x="15" y="268" width="100" height="44" rx="8" fill="#0a0f1a" stroke="#1e3a8a" strokeWidth="1.5" />
+              <rect x="15" y="268" width="100" height="44" rx="8" fill="#0f1530" stroke="#2563eb" strokeWidth="1.5" />
               <text x="65" y="286" textAnchor="middle" fill="#60a5fa" fontSize="9" fontWeight="700">SNOWFLAKE</text>
-              <text x="65" y="300" textAnchor="middle" fill="#999" fontSize="7">Row Access Policies</text>
+              <text x="65" y="300" textAnchor="middle" fill="#bbb" fontSize="7">Row Access Policies</text>
             </g>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('cloud')}>
-              <rect x="145" y="268" width="115" height="44" rx="8" fill="#1a0f0a" stroke="#78350f" strokeWidth="1.5" />
+              <rect x="145" y="268" width="115" height="44" rx="8" fill="#1a1208" stroke="#d97706" strokeWidth="1.5" />
               <text x="202" y="283" textAnchor="middle" fill="#fb923c" fontSize="9" fontWeight="700">CLOUD &amp; AI</text>
-              <text x="202" y="296" textAnchor="middle" fill="#999" fontSize="7">S3 · Bedrock</text>
-              <text x="202" y="307" textAnchor="middle" fill="#999" fontSize="7">IAM / Guardrails</text>
+              <text x="202" y="296" textAnchor="middle" fill="#bbb" fontSize="7">S3 · Bedrock</text>
+              <text x="202" y="307" textAnchor="middle" fill="#bbb" fontSize="7">IAM / Guardrails</text>
             </g>
             <g
               style={{ cursor: 'pointer', opacity: futureOpacity('future-pep') }}

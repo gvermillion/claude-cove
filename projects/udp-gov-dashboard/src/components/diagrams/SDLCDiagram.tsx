@@ -202,14 +202,14 @@ export function SDLCDiagram() {
             />
 
             {/* Lane A edges */}
-            <line x1="108" y1="57" x2="155" y2="57" stroke="#60a5fa" strokeWidth="1.5" strokeOpacity=".55" />
-            <line x1="238" y1="57" x2="277" y2="57" stroke="#4ade80" strokeWidth="1.5" strokeOpacity=".55" />
-            <line x1="348" y1="57" x2="370" y2="57" stroke="#fb923c" strokeWidth="1.5" strokeOpacity=".55" />
-            <path d="M 375,60 C 390,60 395,80 395,105" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeOpacity=".55" />
+            <line x1="108" y1="57" x2="155" y2="57" stroke="#60a5fa" strokeWidth="1.5" strokeOpacity=".8" />
+            <line x1="238" y1="57" x2="277" y2="57" stroke="#4ade80" strokeWidth="1.5" strokeOpacity=".8" />
+            <line x1="348" y1="57" x2="370" y2="57" stroke="#fb923c" strokeWidth="1.5" strokeOpacity=".8" />
+            <path d="M 375,60 C 390,60 395,80 395,105" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeOpacity=".8" />
 
             {/* Lane B edges */}
-            <line x1="108" y1="197" x2="165" y2="197" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".55" />
-            <path d="M 250,197 C 320,197 395,160 395,140" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".55" />
+            <line x1="108" y1="197" x2="165" y2="197" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".8" />
+            <path d="M 250,197 C 320,197 395,160 395,140" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".8" />
 
             {/* Post-merge edges */}
             <line x1="395" y1="140" x2="395" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".85" />
@@ -237,34 +237,34 @@ export function SDLCDiagram() {
 
             {/* Lane A nodes */}
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('sandbox')}>
-              <rect x="18" y="35" width="90" height="44" rx="8" fill="#0a0f1a" stroke="#1e3a8a" strokeWidth="1.5" />
+              <rect x="18" y="35" width="90" height="44" rx="8" fill="#0f1530" stroke="#2563eb" strokeWidth="1.5" />
               <text x="63" y="52" textAnchor="middle" fill="#60a5fa" fontSize="8" fontWeight="700">SANDBOX</text>
-              <text x="63" y="63" textAnchor="middle" fill="#999" fontSize="6">Build tables, models,</text>
-              <text x="63" y="72" textAnchor="middle" fill="#999" fontSize="6">agents, etc.</text>
+              <text x="63" y="63" textAnchor="middle" fill="#bbb" fontSize="6">Build tables, models,</text>
+              <text x="63" y="72" textAnchor="middle" fill="#bbb" fontSize="6">agents, etc.</text>
             </g>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('cortex')}>
-              <rect x="155" y="35" width="84" height="44" rx="8" fill="#0a1a0a" stroke="#14532d" strokeWidth="1.5" />
+              <rect x="155" y="35" width="84" height="44" rx="8" fill="#0f2a0f" stroke="#16a34a" strokeWidth="1.5" />
               <text x="197" y="50" textAnchor="middle" fill="#4ade80" fontSize="8" fontWeight="700">CORTEX</text>
               <text x="197" y="60" textAnchor="middle" fill="#4ade80" fontSize="7">COPILOT</text>
-              <text x="197" y="72" textAnchor="middle" fill="#999" fontSize="6">Find right schema</text>
+              <text x="197" y="72" textAnchor="middle" fill="#bbb" fontSize="6">Find right schema</text>
             </g>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('write')}>
-              <rect x="277" y="35" width="72" height="44" rx="8" fill="#0f1a1a" stroke="#0e7490" strokeWidth="1.5" />
+              <rect x="277" y="35" width="72" height="44" rx="8" fill="#0f1a20" stroke="#0891b2" strokeWidth="1.5" />
               <text x="313" y="52" textAnchor="middle" fill="#22d3ee" fontSize="8" fontWeight="700">WRITE</text>
-              <text x="313" y="63" textAnchor="middle" fill="#999" fontSize="6">Table to schema</text>
-              <text x="313" y="72" textAnchor="middle" fill="#999" fontSize="6">in dev</text>
+              <text x="313" y="63" textAnchor="middle" fill="#bbb" fontSize="6">Table to schema</text>
+              <text x="313" y="72" textAnchor="middle" fill="#bbb" fontSize="6">in dev</text>
             </g>
 
             {/* Lane B nodes */}
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('cicd')}>
-              <rect x="18" y="175" width="90" height="44" rx="8" fill="#1a0f1a" stroke="#5b21b6" strokeWidth="1.5" />
+              <rect x="18" y="175" width="90" height="44" rx="8" fill="#1a0f2a" stroke="#7c3aed" strokeWidth="1.5" />
               <text x="63" y="193" textAnchor="middle" fill="#a78bfa" fontSize="8" fontWeight="700">CI/CD</text>
-              <text x="63" y="205" textAnchor="middle" fill="#999" fontSize="6">dbt pipeline</text>
+              <text x="63" y="205" textAnchor="middle" fill="#bbb" fontSize="6">dbt pipeline</text>
             </g>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('promote')}>
-              <rect x="165" y="175" width="86" height="44" rx="8" fill="#1a0f1a" stroke="#5b21b6" strokeWidth="1.5" />
+              <rect x="165" y="175" width="86" height="44" rx="8" fill="#1a0f2a" stroke="#7c3aed" strokeWidth="1.5" />
               <text x="208" y="193" textAnchor="middle" fill="#a78bfa" fontSize="8" fontWeight="700">PROMOTE</text>
-              <text x="208" y="205" textAnchor="middle" fill="#999" fontSize="6">Schema migration</text>
+              <text x="208" y="205" textAnchor="middle" fill="#bbb" fontSize="6">Schema migration</text>
             </g>
 
             {/* Merge: Governed Schema */}
@@ -272,17 +272,17 @@ export function SDLCDiagram() {
               both paths merge
             </text>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('governed')}>
-              <rect x="350" y="100" width="90" height="50" rx="10" fill="#3a2418" stroke="#b45309" strokeWidth="2" />
-              <text x="395" y="118" textAnchor="middle" fill="#fb923c" fontSize="8" fontWeight="700">GOVERNED</text>
-              <text x="395" y="130" textAnchor="middle" fill="#fb923c" fontSize="7">SCHEMA</text>
-              <text x="395" y="143" textAnchor="middle" fill="#999" fontSize="6">dbt posthook → tags</text>
+              <rect x="350" y="100" width="90" height="50" rx="10" fill="#2a1a0f" stroke="#d97706" strokeWidth="2" />
+              <text x="395" y="118" textAnchor="middle" fill="#fbbf24" fontSize="8" fontWeight="700">GOVERNED</text>
+              <text x="395" y="130" textAnchor="middle" fill="#fbbf24" fontSize="7">SCHEMA</text>
+              <text x="395" y="143" textAnchor="middle" fill="#bbb" fontSize="6">dbt posthook → tags</text>
             </g>
 
             {/* Post: Live */}
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('live')}>
-              <rect x="455" y="192" width="55" height="38" rx="8" fill="#3a1818" stroke="#991b1b" strokeWidth="1.5" />
+              <rect x="455" y="192" width="55" height="38" rx="8" fill="#2a1010" stroke="#dc2626" strokeWidth="1.5" />
               <text x="482" y="207" textAnchor="middle" fill="#f87171" fontSize="8" fontWeight="700">LIVE</text>
-              <text x="482" y="219" textAnchor="middle" fill="#999" fontSize="6">Governed</text>
+              <text x="482" y="219" textAnchor="middle" fill="#bbb" fontSize="6">Governed</text>
             </g>
           </svg>
         </div>
