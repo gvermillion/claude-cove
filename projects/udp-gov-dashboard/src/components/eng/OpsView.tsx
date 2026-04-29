@@ -10,7 +10,7 @@ import {
   DataTable,
   CalloutBox,
   C,
-} from './primitives';
+} from '../primitives';
 
 const OpsView = () => {
   const [expandedPhase, setExpandedPhase] = useState<'phase1' | 'phase2' | null>('phase1');

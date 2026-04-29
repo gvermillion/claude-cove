@@ -9,7 +9,7 @@ import {
   SectionHeader,
   CalloutBox,
   C,
-} from './primitives';
+} from '../primitives';
 
 interface MockUser {
   name: string;

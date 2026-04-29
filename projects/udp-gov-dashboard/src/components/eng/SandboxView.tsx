@@ -10,8 +10,8 @@ import {
   SectionHeader,
   CalloutBox,
   C,
-} from './primitives';
-import { SDLCDiagram } from './diagrams';
+} from '../primitives';
+import { SDLCDiagram } from '../diagrams';
 
 // --- Hardening layer data (compact summary — canonical detail lives in EnforcementView) ---
 

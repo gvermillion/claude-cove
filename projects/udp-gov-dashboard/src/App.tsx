@@ -18,14 +18,14 @@ import type { LucideIcon } from 'lucide-react';
 import { SidebarItem } from './components/primitives';
 import { ModeToggle, type Mode } from './components/ModeToggle';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import OverviewView from './components/OverviewView';
-import SandboxView from './components/SandboxView';
-import EnforcementView from './components/EnforcementView';
-import TaxonomyView from './components/TaxonomyView';
-import PolicyView from './components/PolicyView';
-import SchemaView from './components/SchemaView';
-import ExtensibilityView from './components/ExtensibilityView';
-import OpsView from './components/OpsView';
+import OverviewView from './components/eng/OverviewView';
+import SandboxView from './components/eng/SandboxView';
+import EnforcementView from './components/eng/EnforcementView';
+import TaxonomyView from './components/eng/TaxonomyView';
+import PolicyView from './components/eng/PolicyView';
+import SchemaView from './components/eng/SchemaView';
+import ExtensibilityView from './components/eng/ExtensibilityView';
+import OpsView from './components/eng/OpsView';
 
 type TabId =
   | 'overview'

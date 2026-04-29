@@ -20,8 +20,8 @@ import {
   C,
   colorStyles,
   CalloutBox,
-} from './primitives';
-import { EntitlementsDiagram, DefenseDiagram } from './diagrams';
+} from '../primitives';
+import { EntitlementsDiagram, DefenseDiagram } from '../diagrams';
 
 // --- ENTITLEMENTS lifecycle data ---
 

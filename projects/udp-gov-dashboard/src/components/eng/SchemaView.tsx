@@ -7,7 +7,7 @@ import {
   DetailPanel,
   C,
   colorStyles,
-} from './primitives';
+} from '../primitives';
 
 interface SchemaInfo {
   name: string;

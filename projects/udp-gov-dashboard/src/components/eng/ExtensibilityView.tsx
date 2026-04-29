@@ -16,7 +16,7 @@ import {
   DetailPanel,
   PrevNextNav,
   C,
-} from './primitives';
+} from '../primitives';
 
 /* ------------------------------------------------------------------ */
 /*  Hub-and-spoke data                                                 */

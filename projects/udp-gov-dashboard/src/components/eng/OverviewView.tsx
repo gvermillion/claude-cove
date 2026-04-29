@@ -26,7 +26,7 @@ import {
   PrevNextNav,
   C,
   colorStyles,
-} from './primitives';
+} from '../primitives';
 
 /* ------------------------------------------------------------------ */
 /*  Data                                                               */
