@@ -582,16 +582,16 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
      {mode === 'exec' && <p>Identity sources → unified rule book → enforced everywhere</p>}
      ```
 
-- [ ] **Step 1: Apply edit 1 (ExecRoadmapView)**
+- [x] **Step 1: Apply edit 1 (ExecRoadmapView)**
 
-- [ ] **Step 2: Apply edit 2 (HubSpokeDiagram)**
+- [x] **Step 2: Apply edit 2 (HubSpokeDiagram)**
 
-- [ ] **Step 3: Apply edit 3 (EntitlementsDiagram)**
+- [x] **Step 3: Apply edit 3 (EntitlementsDiagram)**
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
   Run: `pnpm exec tsc --noEmit`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git commit -m "fix(udp-dashboard): remove engineering jargon leaks in exec mode"
   ```
@@ -599,6 +599,8 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
 **Success criteria:**
 - Three jargon leaks closed
 - Tsc green
+
+**Status:** Completed in commit `2a2cec3`. Spec compliance + code-quality review both approved without changes. Removed unused `C` import from `ExecRoadmapView.tsx` as a side effect. Reviewer flagged but didn't block: codebase now has both `{mode === 'eng' && X}{mode === 'exec' && Y}` and ternary mode idioms — worth unifying in a follow-up consolidation pass.
 
 ---
 
