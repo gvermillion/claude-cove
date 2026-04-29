@@ -1,20 +1,21 @@
 // src/components/exec/ExecSummaryView.tsx
 //
-// Executive Summary view — composes the shared summary content blocks with
-// `mode="exec"`. All topic content is rendered from
-// `../summary/summaryContent`; this view is just the composition shell.
+// Executive Summary — narrative-arc composition. Reads as a story:
+// problem → scaling risk → attack surface → requirements → NIST solution →
+// implementation specifics → value proposition → patterns → navigation.
 
 import React from 'react';
 import {
-  HeroBlock,
-  KeyConceptsGrid,
-  GovernanceChallenge,
-  CoreVulnerabilities,
-  SolutionPatternViz,
-  SolutionPatternsGrid,
-  UDPSynergyCallout,
-  DocumentRoadmap,
-} from '../summary/summaryContent';
+  ExecHero,
+  ProblemToday,
+  ScalingHorizon,
+  AttackVectors,
+  DesignRequirements,
+  NistPattern,
+  EntitlementsSpecifics,
+  ValueProposition,
+} from './execNarrative';
+import { SolutionPatternsGrid, DocumentRoadmap } from '../summary/summaryContent';
 
 interface ExecSummaryViewProps {
   onNavigate?: (tabId: string) => void;
@@ -23,13 +24,15 @@ interface ExecSummaryViewProps {
 const ExecSummaryView: React.FC<ExecSummaryViewProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
-      <HeroBlock mode="exec" />
-      <KeyConceptsGrid />
-      <GovernanceChallenge mode="exec" />
-      <CoreVulnerabilities />
-      <SolutionPatternViz />
+      <ExecHero />
+      <ProblemToday />
+      <ScalingHorizon />
+      <AttackVectors />
+      <DesignRequirements />
+      <NistPattern />
+      <EntitlementsSpecifics />
+      <ValueProposition />
       <SolutionPatternsGrid />
-      <UDPSynergyCallout />
       <DocumentRoadmap mode="exec" onNavigate={onNavigate} />
     </div>
   );
