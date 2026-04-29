@@ -123,22 +123,22 @@ export default function ExecSummaryView({ onNavigate }: Props) {
 - Governance Challenge / Vulnerabilities: detail panel prose differs (exec → no internal table refs; eng → use `<C>ENTITLEMENTS</C>` and full pipeline language)
 - Roadmap chips: mode-aware tab list (above)
 
-- [ ] **Step 1: Inspect deleted OverviewView**
+- [x] **Step 1: Inspect deleted OverviewView**
   Run: `git show d69054b^:projects/udp-gov-dashboard/src/components/eng/OverviewView.tsx | head -200`
 
-- [ ] **Step 2: Create `src/components/summary/summaryContent.tsx`**
+- [x] **Step 2: Create `src/components/summary/summaryContent.tsx`**
   Implement the data exports + sub-components as described. Re-use existing primitives (`SectionHeader`, `InfoCard`, `CalloutBox`, `StepSidebar`, `DetailPanel`, `PrevNextNav`, `C`, `colorStyles`).
 
-- [ ] **Step 3: Refactor `ExecSummaryView.tsx`** to consume `summaryContent` with `mode="exec"`.
+- [x] **Step 3: Refactor `ExecSummaryView.tsx`** to consume `summaryContent` with `mode="exec"`.
 
-- [ ] **Step 4: Create `EngOverviewView.tsx`** as parallel composition with `mode="eng"`.
+- [x] **Step 4: Create `EngOverviewView.tsx`** as parallel composition with `mode="eng"`.
 
-- [ ] **Step 5: Export from `eng/index.ts`**
+- [x] **Step 5: Export from `eng/index.ts`**
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
   Run: `pnpm exec tsc --noEmit` — expect 0 errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
   ```bash
   git add src/components/summary src/components/exec/ExecSummaryView.tsx src/components/eng/EngOverviewView.tsx src/components/eng/index.ts
   git commit -m "refactor(udp-dashboard): extract shared summary content; add EngOverviewView"
@@ -148,6 +148,8 @@ export default function ExecSummaryView({ onNavigate }: Props) {
 - `tsc --noEmit` green
 - ExecSummaryView and EngOverviewView render the same 8 sections (hero, concepts, challenge, vulns, solution viz, solution patterns, synergy, roadmap)
 - Mode-specific divergences are limited to copy, badge, density — never structural
+
+**✅ COMPLETED** — commits `03e06ca` (initial) + `32ddc50` (review fixes: dropped unused mode props on 4 invariant sub-components, replaced React.createElement with JSX-variable idiom)
 
 ---
 
