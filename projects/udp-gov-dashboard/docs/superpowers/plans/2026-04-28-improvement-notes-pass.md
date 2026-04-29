@@ -527,14 +527,14 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
 
 6. **Architecture Guarantee callout** — keep, lightly edit per Task 3 (no definitive CrowdStrike claims).
 
-- [ ] **Step 1: Draft three recipe data structures + comparison matrix data**
+- [x] **Step 1: Draft three recipe data structures + comparison matrix data**
 
-- [ ] **Step 2: Replace ExtensibilityView body** with the new content
+- [x] **Step 2: Replace ExtensibilityView body** with the new content
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
   Run: `pnpm exec tsc --noEmit && pnpm build`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git commit -m "refactor(udp-dashboard): replace abstract Extensibility walkthroughs with concrete recipes"
   ```
@@ -543,6 +543,8 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
 - Three named recipes (S3 PEP, Bedrock PEP, Workday PDP) with concrete steps + code snippets
 - Comparison matrix showing PEP-specific vs reused mechanics
 - No abstract "Step 1: Mirror ENTITLEMENTS" without a platform binding
+
+**Status:** Completed in commit `d384791` (initial implementation) + follow-up `41bd784` (code-quality fixes). Code-quality re-review approved. The follow-up addressed three Important issues raised by reviewer: extended `DataTable` primitive with optional `firstColumnEmphasis` + `valueFontMono` flags rather than forking with a manual `<table>`, replaced local `colorAccent`/`activeBorderBg` Records with shared `colorStyles` lookups (also fixed `-400` vs `-500` shade drift), and added `tabIndex={0}` + `role="region"` + `aria-label` + visible focus ring to the `<pre>` code blocks. Deviated from plan's Opus model assignment — used Sonnet for both the implementation and the fix pass; reviewer assessed quality was adequate. Deferred for follow-up: I-2 (recipe selector reimplements `StepSidebar`) and minor cleanups.
 
 ---
 
