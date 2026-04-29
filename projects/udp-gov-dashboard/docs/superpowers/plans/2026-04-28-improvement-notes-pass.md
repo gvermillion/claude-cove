@@ -241,18 +241,19 @@ Import `LayoutDashboard` from `lucide-react`.
 
 **Rule of thumb:** any sentence that begins "CrowdStrike X…" needs a softening rewrite. Use phrases like "in a typical UDP deployment", "platforms in this pattern", "an illustrative target stack of …".
 
-- [ ] **Step 1: Scan for definitive CrowdStrike state claims**
+- [x] **Step 1: Scan for definitive CrowdStrike state claims**
   Run: `rtk grep -n -i "crowdstrike" src/` (fall back to `grep -RIn -i 'crowdstrike' src` if rtk unavailable)
 
-- [ ] **Step 2: Rewrite each occurrence per the rule of thumb**
+- [x] **Step 2: Rewrite each occurrence per the rule of thumb**
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
   Run: `pnpm exec tsc --noEmit`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git commit -m "docs(udp-dashboard): reframe CrowdStrike claims as demonstrative examples"
   ```
+  Completed in commit `737aafd`. Spec + code-quality reviews ✅.
 
 **Success criteria:**
 - No copy asserts "CrowdStrike does X today" or "CrowdStrike's estate is X"
