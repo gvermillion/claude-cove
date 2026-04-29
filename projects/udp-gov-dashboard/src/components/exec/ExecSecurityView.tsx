@@ -108,7 +108,7 @@ const ExecSecurityView: React.FC = () => {
     <div className="space-y-12 animate-in fade-in duration-700">
       <SectionHeader
         title="Security"
-        subtitle="Four risks the current architecture can't catch — and the layered defenses that close them."
+        subtitle="Five risks the current architecture can't catch — and the layered defenses that close them."
         icon={Shield}
       />
 
@@ -185,7 +185,7 @@ const ExecSecurityView: React.FC = () => {
         </h3>
         <DefenseDiagram />
         <p className="text-sm text-gray-400 italic leading-relaxed">
-          Five independent layers. Any single layer can fail without
+          Four independent layers. Any single layer can fail without
           compromising the system.
         </p>
       </section>
