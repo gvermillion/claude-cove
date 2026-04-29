@@ -188,9 +188,16 @@ export const HubSpokeDiagram: React.FC<HubSpokeDiagramProps> = ({
 
   return (
     <div className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-6">
-      <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-        PDP / PEP Architecture — Hub and Spoke
-      </p>
+      {mode === 'eng' && (
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+          PDP / PEP Architecture — Hub and Spoke
+        </p>
+      )}
+      {mode === 'exec' && (
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+          Single Source of Truth — Hub and Spoke
+        </p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
         <div className="relative w-full" style={{ minHeight: 320 }}>

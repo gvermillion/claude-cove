@@ -427,7 +427,12 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
       {/* Header */}
       <div style={{ background: '#0d0d0d', borderBottom: '1px solid #1a1a1a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ccc' }}>Governance Automation Pipeline</span>
-        <span style={{ fontSize: '0.65rem', color: '#888' }}>Sources → PDP → PEPs</span>
+        {mode === 'eng' && (
+          <span style={{ fontSize: '0.65rem', color: '#888' }}>Sources → PDP → PEPs</span>
+        )}
+        {mode === 'exec' && (
+          <span style={{ fontSize: '0.65rem', color: '#888' }}>Identity sources → unified rule book → enforced everywhere</span>
+        )}
       </div>
 
       {/* Body: SVG left, detail panel right */}

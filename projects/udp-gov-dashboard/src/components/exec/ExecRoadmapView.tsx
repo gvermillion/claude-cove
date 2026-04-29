@@ -5,7 +5,6 @@ import {
   SectionHeader,
   DataTable,
   CalloutBox,
-  C,
 } from '../primitives';
 
 const ExecRoadmapView: React.FC = () => {
@@ -177,7 +176,7 @@ const ExecRoadmapView: React.FC = () => {
           <p>
             No new teams or headcount required. Every governance maintenance
             task maps to an existing operational role. The central{' '}
-            <C>ENTITLEMENTS</C> matrix is maintained by the same people who
+            <strong className="text-white">access matrix</strong> is maintained by the same people who
             already maintain the source systems that feed it.
           </p>
         </CalloutBox>
