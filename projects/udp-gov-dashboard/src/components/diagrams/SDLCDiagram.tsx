@@ -154,11 +154,11 @@ export function SDLCDiagram() {
       </div>
 
       {/* Body */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', minHeight: 320 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', minHeight: 480 }}>
         {/* SVG pane */}
         <div
           style={{
-            padding: '1.25rem 0.5rem',
+            padding: '1.75rem 1rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -166,7 +166,8 @@ export function SDLCDiagram() {
         >
           <svg
             viewBox="0 0 520 280"
-            style={{ width: '100%', maxWidth: 540, height: 280 }}
+            preserveAspectRatio="xMidYMid meet"
+            style={{ width: '100%', height: 'auto', maxHeight: 460 }}
           >
             <defs>
               <path id="sp-a" d="M 108,57 L 370,57 C 385,57 395,78 395,100" fill="none" />

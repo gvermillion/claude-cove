@@ -5,10 +5,10 @@ import {
   Lock,
   Zap,
   ArrowRight,
+  ChevronDown,
 } from 'lucide-react';
 import {
   SectionHeader,
-  CalloutBox,
   C,
 } from '../primitives';
 import { SDLCDiagram } from '../diagrams';
@@ -64,6 +64,22 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
         badge="Section 2 · Developer Experience"
       />
 
+      {/* Thesis headline — the page's central claim, lifted from the bottom callout */}
+      <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent p-8 shadow-xl shadow-blue-950/10">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 mb-3">
+          The Thesis
+        </p>
+        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-tight mb-4">
+          Governance is invisible to the developer.
+        </h2>
+        <p className="text-sm text-gray-300 leading-relaxed max-w-3xl">
+          The developer never writes a <C>GRANT</C>, applies a tag, or configures a
+          policy. They write SQL in their sandbox, ask Copilot for routing guidance,
+          and promote via dbt. Security is structural — enforced by schema placement
+          and tag inheritance.
+        </p>
+      </div>
+
       {/* Two-Stage Lifecycle — static overview */}
       <div className="space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2 uppercase tracking-tight">
@@ -79,24 +95,46 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
               <p className="text-xs text-gray-400 leading-relaxed mb-4">
                 Personal sandbox schema — full CRUD, no admin overhead.
               </p>
-              {/* Allowed actions */}
-              <div className="space-y-1.5 mb-4">
-                {SANDBOX_ALLOWED.map((item) => (
-                  <div key={item.label}>
-                    <span className="text-xs font-mono text-gray-300">{item.label}</span>
-                    <p className="text-[10px] text-gray-500 leading-tight">{item.detail}</p>
-                  </div>
-                ))}
-              </div>
-              {/* Blocked actions */}
-              <div className="space-y-1.5 border-t border-white/10 pt-3">
-                {SANDBOX_BLOCKED.map((item) => (
-                  <div key={item.label}>
-                    <span className="text-xs font-mono text-red-400/60 line-through">{item.label}</span>
-                    <p className="text-[10px] text-red-500/40 leading-tight">{item.detail}</p>
-                  </div>
-                ))}
-              </div>
+              {/* Allowed actions — folded */}
+              <details className="group mb-3">
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-emerald-500/[0.08] hover:bg-emerald-500/[0.14] border border-emerald-500/20 transition-colors">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                    Allowed actions ({SANDBOX_ALLOWED.length})
+                  </span>
+                  <ChevronDown
+                    size={12}
+                    className="text-emerald-400 transition-transform group-open:rotate-180"
+                  />
+                </summary>
+                <div className="space-y-1.5 mt-3 px-1">
+                  {SANDBOX_ALLOWED.map((item) => (
+                    <div key={item.label}>
+                      <span className="text-xs font-mono text-gray-300">{item.label}</span>
+                      <p className="text-[10px] text-gray-500 leading-tight">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+              {/* Blocked actions — folded */}
+              <details className="group">
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-red-500/[0.06] hover:bg-red-500/[0.12] border border-red-500/20 transition-colors">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                    Forbidden actions ({SANDBOX_BLOCKED.length})
+                  </span>
+                  <ChevronDown
+                    size={12}
+                    className="text-red-400 transition-transform group-open:rotate-180"
+                  />
+                </summary>
+                <div className="space-y-1.5 mt-3 px-1">
+                  {SANDBOX_BLOCKED.map((item) => (
+                    <div key={item.label}>
+                      <span className="text-xs font-mono text-red-400/60 line-through">{item.label}</span>
+                      <p className="text-[10px] text-red-500/40 leading-tight">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
             </div>
             <div className="hidden md:flex flex-col items-center gap-2 text-gray-500">
               <svg width="48" height="12" viewBox="0 0 48 12" fill="none">
@@ -171,13 +209,6 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
         </button>
       </div>
 
-      <CalloutBox title="Governance is Invisible to the Developer" variant="blue">
-        <p>
-          The developer never writes a <C>GRANT</C>, applies a tag, or configures a policy.
-          They write SQL in their sandbox, ask Copilot for routing guidance, and promote via dbt.
-          Security is structural — enforced by schema placement and tag inheritance.
-        </p>
-      </CalloutBox>
     </div>
   );
 };
