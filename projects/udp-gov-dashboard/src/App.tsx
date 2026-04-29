@@ -1,0 +1,139 @@
+import React, { useState, useCallback } from 'react';
+import {
+  Shield,
+  Cpu,
+  Layers,
+  Tags,
+  Table2,
+  Code,
+  Globe,
+  Settings,
+  Menu,
+  Database,
+  AlertTriangle,
+  PanelLeftClose,
+  PanelLeft,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { SidebarItem } from './components/primitives';
+import OverviewView from './components/OverviewView';
+import SandboxView from './components/SandboxView';
+import EnforcementView from './components/EnforcementView';
+import TaxonomyView from './components/TaxonomyView';
+import PolicyView from './components/PolicyView';
+import SchemaView from './components/SchemaView';
+import ExtensibilityView from './components/ExtensibilityView';
+import OpsView from './components/OpsView';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App shell
+// ─────────────────────────────────────────────────────────────────────────────
+
+type TabId =
+  | 'overview'
+  | 'sandbox'
+  | 'enforcement'
+  | 'taxonomy'
+  | 'schema'
+  | 'policy'
+  | 'extensibility'
+  | 'ops';
+
+const menuItems: { id: TabId; label: string; icon: LucideIcon }[] = [
+  { id: 'overview', label: 'Exec Summary', icon: Shield },
+  { id: 'sandbox', label: 'Developer Experience', icon: Cpu },
+  { id: 'enforcement', label: 'Hardening', icon: Layers },
+  { id: 'taxonomy', label: 'Tag Taxonomy', icon: Tags },
+  { id: 'schema', label: 'Schema Design', icon: Table2 },
+  { id: 'policy', label: 'Policy Logic', icon: Code },
+  { id: 'extensibility', label: 'Extensibility', icon: Globe },
+  { id: 'ops', label: 'Roadmap & Ops', icon: Settings },
+];
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+
+  const navigateTo = useCallback((tabId: string) => {
+    setActiveTab(tabId as TabId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const views: Record<TabId, React.ReactNode> = {
+    overview: <OverviewView onNavigate={navigateTo} />,
+    sandbox: <SandboxView onNavigate={navigateTo} />,
+    enforcement: <EnforcementView />,
+    taxonomy: <TaxonomyView />,
+    schema: <SchemaView />,
+    policy: <PolicyView />,
+    extensibility: <ExtensibilityView />,
+    ops: <OpsView />,
+  };
+
+  return (
+    <div className="min-h-screen bg-[#080808] text-white flex font-sans selection:bg-red-600/30">
+      <aside
+        className={`${
+          isSidebarOpen ? 'w-64' : 'w-20'
+        } fixed inset-y-0 left-0 bg-[#0d0d0d] border-r border-white/15 transition-all duration-300 z-50 flex flex-col`}
+      >
+        <div className="p-6 flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-red-600 flex items-center justify-center rounded-sm shrink-0 shadow-lg shadow-red-900/10">
+              <Shield size={22} className="text-white fill-white" />
+            </div>
+            {isSidebarOpen && (
+              <span className="font-black tracking-tighter text-2xl leading-none italic">
+                UDP<span className="text-red-600">GOV</span>
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setSidebarOpen(!isSidebarOpen)}
+            className="p-1.5 hover:bg-white/5 rounded text-gray-500 transition-colors"
+          >
+            {isSidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeft size={16} />}
+          </button>
+        </div>
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto pb-6">
+          {menuItems.map((item) => (
+            <SidebarItem
+              key={item.id}
+              icon={item.icon}
+              label={isSidebarOpen ? item.label : ''}
+              active={activeTab === item.id}
+              onClick={() => navigateTo(item.id)}
+            />
+          ))}
+        </nav>
+      </aside>
+
+      <main
+        className={`flex-1 transition-all duration-300 ${
+          isSidebarOpen ? 'ml-64' : 'ml-20'
+        } p-10 pb-24`}
+      >
+        <div className="max-w-5xl mx-auto">
+          <div className="min-h-[70vh]">{views[activeTab]}</div>
+        </div>
+      </main>
+
+      <footer
+        className={`fixed bottom-0 right-0 h-12 bg-[#0d0d0d]/90 backdrop-blur-xl border-t border-white/15 flex items-center justify-between px-10 z-40 text-[9px] font-black text-gray-600 uppercase tracking-[.5em] transition-all duration-300 ${
+          isSidebarOpen ? 'left-64' : 'left-20'
+        }`}
+      >
+        <div className="flex items-center space-x-8">
+          <span className="flex items-center gap-2 italic">
+            <Database size={10} className="text-red-800" /> CROWDSTRIKE UDP
+          </span>
+          <span>SILVER LAYER & GOVERNANCE</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={12} className="text-red-800" />
+          <span className="text-red-800">PROPRIETARY / INTERNAL</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
