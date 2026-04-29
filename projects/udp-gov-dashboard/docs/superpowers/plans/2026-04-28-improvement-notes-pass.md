@@ -351,22 +351,18 @@ const SANDBOX_PERIMETER_GUARANTEES = [
 
 Render as 3-column or stacked sections with the existing `SandboxView` styling (red/amber/emerald accent rails). Update the `SectionHeader` `badge` from "Sections 2 & 7" to "Section 2 · Developer Experience" since the old multi-section badge is now stale (overview deletion + Task 2 unification).
 
-- [ ] **Step 1: Replace abbreviated lists with full enumerations**
+- [x] **Step 1: Replace abbreviated lists with full enumerations**
 
-- [ ] **Step 2: Update SectionHeader badge**
+- [x] **Step 2: Update SectionHeader badge**
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
   Run: `pnpm exec tsc --noEmit`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git commit -m "feat(udp-dashboard): enumerate full sandbox permission matrix"
   ```
-
-**Success criteria:**
-- 8 allowed, 7 blocked, 5 perimeter guarantees rendered
-- Visual hierarchy preserved
-- No TS errors
+  Completed in commit `4abc8cc`. 8 allowed / 7 blocked / 5 perimeter rendered. Spec + code-quality reviews ✅.
 
 ---
 
