@@ -170,7 +170,7 @@ export function SDLCDiagram() {
           >
             <defs>
               <path id="sp-a" d="M 108,57 L 370,57 C 385,57 395,78 395,100" fill="none" />
-              <path id="sp-b" d="M 108,197 L 250,197 C 320,197 395,168 395,150" fill="none" />
+              <path id="sp-b" d="M 108,197 L 250,197 C 320,197 395,158 395,140" fill="none" />
               <path id="sp-post" d="M 395,150 L 395,210 L 455,210" fill="none" />
               <filter id="gl2">
                 <feGaussianBlur stdDeviation="2.5" result="g" />
@@ -208,11 +208,11 @@ export function SDLCDiagram() {
 
             {/* Lane B edges */}
             <line x1="108" y1="197" x2="165" y2="197" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".55" />
-            <path d="M 250,197 C 320,197 395,170 395,135" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".55" />
+            <path d="M 250,197 C 320,197 395,160 395,140" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".55" />
 
             {/* Post-merge edges */}
-            <line x1="395" y1="148" x2="395" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".55" />
-            <line x1="405" y1="210" x2="455" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".55" />
+            <line x1="395" y1="140" x2="395" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".85" />
+            <line x1="405" y1="210" x2="455" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".85" />
 
             {/* Animated pulses */}
             <circle r="3" fill="#60a5fa" filter="url(#gl2)">
@@ -271,7 +271,7 @@ export function SDLCDiagram() {
               both paths merge
             </text>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('governed')}>
-              <rect x="350" y="100" width="90" height="50" rx="10" fill="#1a0f0a" stroke="#b45309" strokeWidth="2" />
+              <rect x="350" y="100" width="90" height="50" rx="10" fill="#2a1a14" stroke="#b45309" strokeWidth="2" />
               <text x="395" y="118" textAnchor="middle" fill="#fb923c" fontSize="8" fontWeight="700">GOVERNED</text>
               <text x="395" y="130" textAnchor="middle" fill="#fb923c" fontSize="7">SCHEMA</text>
               <text x="395" y="143" textAnchor="middle" fill="#999" fontSize="6">dbt posthook → tags</text>
@@ -279,7 +279,7 @@ export function SDLCDiagram() {
 
             {/* Post: Live */}
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('live')}>
-              <rect x="455" y="192" width="55" height="38" rx="8" fill="#1a0a0a" stroke="#991b1b" strokeWidth="1.5" />
+              <rect x="455" y="192" width="55" height="38" rx="8" fill="#2a1414" stroke="#991b1b" strokeWidth="1.5" />
               <text x="482" y="207" textAnchor="middle" fill="#f87171" fontSize="8" fontWeight="700">LIVE</text>
               <text x="482" y="219" textAnchor="middle" fill="#999" fontSize="6">Governed</text>
             </g>
