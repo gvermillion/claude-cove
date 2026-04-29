@@ -17,6 +17,7 @@ import {
   Network,
   ShieldCheck,
   Map,
+  LayoutDashboard,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SidebarItem } from './components/primitives';
@@ -29,6 +30,7 @@ import {
   ExecRoadmapView,
 } from './components/exec';
 import {
+  EngOverviewView,
   SandboxView,
   EnforcementView,
   TaxonomyView,
@@ -40,6 +42,7 @@ import {
 
 type ExecTabId = 'summary' | 'architecture' | 'security' | 'roadmap';
 type EngTabId =
+  | 'overview'
   | 'sandbox'
   | 'enforcement'
   | 'taxonomy'
@@ -56,6 +59,7 @@ const execMenu: { id: ExecTabId; label: string; icon: LucideIcon }[] = [
 ];
 
 const engMenu: { id: EngTabId; label: string; icon: LucideIcon }[] = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'sandbox', label: 'Developer Experience', icon: Cpu },
   { id: 'schema', label: 'Schema Design', icon: Table2 },
   { id: 'taxonomy', label: 'Tag Taxonomy', icon: Tags },
@@ -73,7 +77,7 @@ export default function App() {
   );
   const [engTab, setEngTab] = useLocalStorage<EngTabId>(
     'udp-eng-tab',
-    'sandbox',
+    'overview',
   );
   const [isSidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
     'udp-sidebar-open',
@@ -104,6 +108,7 @@ export default function App() {
   };
 
   const engViews: Record<EngTabId, React.ReactNode> = {
+    overview: <EngOverviewView onNavigate={navigateEng} />,
     sandbox: <SandboxView onNavigate={navigateEng} />,
     enforcement: <EnforcementView />,
     taxonomy: <TaxonomyView />,
