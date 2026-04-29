@@ -287,9 +287,8 @@ export const HeroBlock: React.FC<ModeProps> = ({ mode = 'exec' }) => {
           Snowflake Governance &<br /> Access Architecture Plan
         </h1>
         <p className="text-gray-400 text-base leading-relaxed font-light max-w-3xl">
-          CrowdStrike's security engineering team identified gaps in Snowflake's
-          row-level security propagation. This plan closes every gap using
-          standard, vendor-neutral patterns — layered onto the{' '}
+          Identified gaps in Snowflake's row-level security propagation can be
+          closed using standard, vendor-neutral patterns — layered onto the{' '}
           <span className="text-white font-semibold">
             Unified Data Platform (UDP)
           </span>{' '}
@@ -363,10 +362,10 @@ export const GovernanceChallenge: React.FC<ModeProps> = ({ mode = 'exec' }) => {
       </h3>
 
       <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
-        CrowdStrike's data estate spans three enforcement platforms (PEPs),
-        three identity sources (Okta, Salesforce, manual overrides), and zero
-        shared policy logic. Each PEP implements its own access rules
-        independently — a combinatorial governance problem.
+        In a typical multi-platform deployment, the data estate spans three
+        enforcement platforms (PEPs), three identity sources (Okta, Salesforce,
+        manual overrides), and zero shared policy logic. Each PEP implements its
+        own access rules independently — a combinatorial governance problem.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-6">

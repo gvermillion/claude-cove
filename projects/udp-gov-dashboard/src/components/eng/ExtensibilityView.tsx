@@ -107,7 +107,7 @@ const ExtensibilityView = () => {
     <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
       <SectionHeader
         title="Cross-Platform Extensibility"
-        subtitle="CrowdStrike's data estate spans Snowflake, AWS S3, and Bedrock AI agents. This section proves that governance is a platform service, not a vendor-specific feature — and shows how to extend it."
+        subtitle="A representative target estate — illustrated here as Snowflake, AWS S3, and Bedrock — spans multiple enforcement points. This section proves that governance is a platform service, not a vendor-specific feature — and shows how to extend it to any platform."
         icon={Globe}
         badge="Section 8"
       />
