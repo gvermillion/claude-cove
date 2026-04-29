@@ -619,16 +619,16 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
 
 3. **`src/hooks/useLocalStorage.ts`** — review the setter wrapper. If the wrapper does nothing beyond `setState`, drop it and return `setState` directly. If it has stable identity logic, leave it but add a one-line note.
 
-- [ ] **Step 1: Dedupe HubSpokeMode → Mode**
+- [x] **Step 1: Dedupe HubSpokeMode → Mode**
 
-- [ ] **Step 2: Footer mode-aware label**
+- [x] **Step 2: Footer mode-aware label**
 
-- [ ] **Step 3: useLocalStorage setter cleanup**
+- [x] **Step 3: useLocalStorage setter cleanup**
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
   Run: `pnpm exec tsc --noEmit`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git commit -m "chore(udp-dashboard): nice-to-have cleanups (Mode dedup, footer, hook)"
   ```
@@ -637,6 +637,8 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
 - No `HubSpokeMode` type leftover
 - Footer reads mode-appropriately
 - `useLocalStorage` is minimal
+
+**Status:** Completed in commit `2b97140`. Spec compliance + code-quality review both approved without changes. `HubSpokeDiagram` now imports `Mode` via `import type` for compile-time-only resolution. `useLocalStorage` returns `useState`'s `setValue` directly — confirmed `useState` setters are guaranteed stable across renders, so the prior `useCallback` wrapper added zero value. Reviewer noted a low-priority follow-up: dropping the explicit return-type annotation on `useLocalStorage` to let TS infer `ReturnType<typeof useState<T>>`.
 
 ---
 
