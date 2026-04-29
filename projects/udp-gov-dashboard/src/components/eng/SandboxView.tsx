@@ -13,6 +13,37 @@ import {
 } from '../primitives';
 import { SDLCDiagram } from '../diagrams';
 
+// --- Full sandbox permission matrix ---
+
+const SANDBOX_ALLOWED = [
+  { label: 'CREATE TABLE / VIEW',  detail: 'Materialize working tables and views inside the sandbox schema.' },
+  { label: 'CREATE TEMP TABLE',    detail: 'Session-scoped scratch space; auto-dropped on disconnect.' },
+  { label: 'INSERT / UPDATE / DELETE / MERGE', detail: 'Mutate sandbox-owned objects freely.' },
+  { label: 'SELECT / JOIN',        detail: 'Read from any governed schema where the user has entitlements.' },
+  { label: 'CREATE FUNCTION (UDF) / PROCEDURE', detail: 'Iterate on transforms, ML features, ELT logic.' },
+  { label: 'CREATE STAGE (internal)', detail: 'Stage files for testing inside the account.' },
+  { label: 'COPY INTO (sandbox-scoped)', detail: 'Load test data into sandbox tables.' },
+  { label: 'TIME TRAVEL',          detail: 'Recover from mistakes within retention window.' },
+];
+
+const SANDBOX_BLOCKED = [
+  { label: 'GRANT / REVOKE',          detail: 'Cannot share sandbox objects outward — DLP boundary.' },
+  { label: 'CREATE EXTERNAL STAGE',   detail: 'No egress to outside cloud storage from the sandbox.' },
+  { label: 'CREATE SHARE / REPLICATION', detail: 'No cross-account distribution.' },
+  { label: 'ALTER ACCOUNT / WAREHOUSE / ROLE', detail: 'No platform-level configuration changes.' },
+  { label: 'CREATE ROW ACCESS POLICY / MASKING POLICY', detail: 'Policy authorship is centralized; sandbox cannot self-grant exemptions.' },
+  { label: 'MOUNT EXTERNAL OBJECT STORE', detail: 'No bridging to S3 / GCS / Azure outside the governed perimeter.' },
+  { label: 'EXFIL VIA UDF (network egress)', detail: 'External access integrations are not enabled in sandbox.' },
+];
+
+const SANDBOX_PERIMETER_GUARANTEES = [
+  { label: 'Row Access Policies remain enforced', detail: 'Reading governed schemas applies the same RAPs as production.' },
+  { label: 'Masking Policies remain enforced',    detail: 'PII columns stay masked in sandbox queries.' },
+  { label: 'Lineage is captured',                  detail: 'Snowflake ACCESS_HISTORY records every read; sandbox is fully audited.' },
+  { label: '30-day auto-drop',                     detail: 'Idle sandbox schemas are auto-cleaned after 30 days.' },
+  { label: 'Offboarding cascade',                  detail: 'When a user is offboarded in Okta, their sandbox is dropped within 24h.' },
+];
+
 // --- Hardening layer data (compact summary — canonical detail lives in EnforcementView) ---
 
 const hardeningSummary = [
@@ -30,7 +61,7 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
         title="The Governed Developer Experience"
         subtitle="Developers need unrestricted iteration speed. The enterprise needs security guarantees. This section shows how both coexist — without requiring developers to understand governance."
         icon={Cpu}
-        badge="Sections 2 & 7"
+        badge="Section 2 · Developer Experience"
       />
 
       {/* Two-Stage Lifecycle — static overview */}
@@ -49,19 +80,21 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
                 Personal sandbox schema — full CRUD, no admin overhead.
               </p>
               {/* Allowed actions */}
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {['CREATE TABLE', 'JOIN', 'ITERATE'].map((t) => (
-                  <span key={t} className="text-[9px] font-mono bg-white/8 text-gray-400 px-2 py-1 rounded">
-                    {t}
-                  </span>
+              <div className="space-y-1.5 mb-4">
+                {SANDBOX_ALLOWED.map((item) => (
+                  <div key={item.label}>
+                    <span className="text-xs font-mono text-gray-300">{item.label}</span>
+                    <p className="text-[10px] text-gray-500 leading-tight">{item.detail}</p>
+                  </div>
                 ))}
               </div>
               {/* Blocked actions */}
-              <div className="flex flex-wrap gap-1.5">
-                {['GRANT USAGE', 'COPY INTO', 'EXTERNAL STAGE'].map((t) => (
-                  <span key={t} className="text-[9px] font-mono bg-red-600/10 text-red-400/60 line-through px-2 py-1 rounded">
-                    {t}
-                  </span>
+              <div className="space-y-1.5 border-t border-white/10 pt-3">
+                {SANDBOX_BLOCKED.map((item) => (
+                  <div key={item.label}>
+                    <span className="text-xs font-mono text-red-400/60 line-through">{item.label}</span>
+                    <p className="text-[10px] text-red-500/40 leading-tight">{item.detail}</p>
+                  </div>
                 ))}
               </div>
             </div>
@@ -89,11 +122,12 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
               <p className="text-xs text-gray-400 leading-relaxed mb-4">
                 RAP-controlled shared schema — enterprise security wraps all exported data.
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {['ROW ACCESS POLICY', 'BI DASHBOARDS', 'GOVERNED'].map((t) => (
-                  <span key={t} className="text-[9px] font-mono bg-red-600/10 text-red-400/60 px-2 py-1 rounded">
-                    {t}
-                  </span>
+              <div className="space-y-1.5">
+                {SANDBOX_PERIMETER_GUARANTEES.map((item) => (
+                  <div key={item.label}>
+                    <span className="text-xs font-mono text-red-400/80">{item.label}</span>
+                    <p className="text-[10px] text-red-500/50 leading-tight">{item.detail}</p>
+                  </div>
                 ))}
               </div>
             </div>
