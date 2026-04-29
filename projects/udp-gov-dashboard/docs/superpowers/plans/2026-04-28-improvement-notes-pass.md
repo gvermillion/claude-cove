@@ -195,14 +195,14 @@ const engViews: Record<EngTabId, React.ReactNode> = {
 
 Import `LayoutDashboard` from `lucide-react`.
 
-- [ ] **Step 1: Add `'overview'` to `EngTabId` union, default `useLocalStorage` value, and prepend menu entry**
+- [x] **Step 1: Add `'overview'` to `EngTabId` union, default `useLocalStorage` value, and prepend menu entry**
 
-- [ ] **Step 2: Wire `EngOverviewView` into `engViews` dict** with `onNavigate={navigateEng}`
+- [x] **Step 2: Wire `EngOverviewView` into `engViews` dict** with `onNavigate={navigateEng}`
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
   Run: `pnpm exec tsc --noEmit && pnpm build`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git add src/App.tsx
   git commit -m "feat(udp-dashboard): add Overview as first engineering tab"
@@ -212,6 +212,8 @@ Import `LayoutDashboard` from `lucide-react`.
 - App boots in eng mode landing on Overview by default
 - Roadmap chips in EngOverviewView navigate to other eng tabs via `navigateEng`
 - Build succeeds
+
+**✅ COMPLETED** — commit `acdc772`
 
 ---
 
