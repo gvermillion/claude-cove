@@ -93,7 +93,7 @@ export const KEY_CONCEPTS: {
   {
     term: 'PDP',
     expansion: 'Policy Decision Point',
-    definition: 'Where access rules are stored — the single source of truth',
+    definition: 'Where access rules are stored — the single source of truth for ABAC (attribute-based access)',
     color: 'emerald',
   },
   {
@@ -129,6 +129,13 @@ export const KEY_CONCEPTS: {
     expansion: 'Row-Level Security',
     definition:
       'Restricting which rows a user can see based on their identity attributes',
+    color: 'amber',
+  },
+  {
+    term: 'RBAC',
+    expansion: 'Role-Based Access Control',
+    definition:
+      'Layered overlay used for sensitive-data exemptions like PII unmasking; complements ABAC',
     color: 'amber',
   },
 ];

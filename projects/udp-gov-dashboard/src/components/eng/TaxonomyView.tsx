@@ -202,6 +202,16 @@ const PiiInteractionSection = () => {
             given Gold table is a <span className="text-white font-semibold">prerequisite for Gold layer certification</span>.
           </p>
         </CalloutBox>
+        <CalloutBox title="ABAC + RBAC: layered access models" variant="amber">
+          <p>
+            The default model is <span className="text-white font-semibold">ABAC</span> — access derives from attributes
+            (region, owner, domain) recorded in <C>ENTITLEMENTS</C>. PII unmasking is the natural place for an{' '}
+            <span className="text-white font-semibold">RBAC overlay</span>: grant <C>UNMASK_PII</C> to specific roles
+            (e.g. <C>SECURITY_ANALYST</C>, <C>FRAUD_INVESTIGATOR</C>) so that column masking respects role membership in
+            addition to row-level entitlements. Layering RBAC on ABAC keeps the data plane attribute-driven while exposing
+            a clear, auditable surface for sensitive-data exemptions.
+          </p>
+        </CalloutBox>
       </div>
     </div>
   );

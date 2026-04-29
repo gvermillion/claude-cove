@@ -7,6 +7,7 @@ import {
   Users,
   GitBranch,
   ShieldCheck,
+  EyeOff,
 } from 'lucide-react';
 import {
   SectionHeader,
@@ -76,6 +77,24 @@ const VULN_ITEMS_EXEC = [
         <p className="text-emerald-400 font-semibold text-xs mt-2">
           Solved by sourcing identity and ownership directly from Okta and
           Salesforce.
+        </p>
+      </>
+    ),
+  },
+  {
+    label: 'Sensitive Data Exposure',
+    icon: EyeOff,
+    color: 'red' as const,
+    title: 'Risk: Personal Data Visible Where It Shouldn\'t Be',
+    content: (
+      <>
+        <p>
+          Personal information — names, emails, identifiers — needs to stay visible only to the people whose job
+          requires it. The current architecture doesn't have a clean answer for "let security analysts unmask this
+          column for an investigation, but nobody else."
+        </p>
+        <p className="text-emerald-400 font-semibold text-xs mt-2">
+          Solved by column-level masking + a role-based unmask grant — row-level rules still apply on top.
         </p>
       </>
     ),

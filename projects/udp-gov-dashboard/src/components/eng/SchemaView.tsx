@@ -15,6 +15,7 @@ interface SchemaInfo {
   grainColumns: React.ReactNode;
   color: string;
   domain: string;
+  pii: { present: boolean; columns?: string[] };
   detail: {
     description: React.ReactNode;
     rapBehavior: React.ReactNode;
@@ -30,6 +31,7 @@ const schemas: SchemaInfo[] = [
     grainColumns: <><C>OPPORTUNITY_ID</C>, <C>REGION_ID</C></>,
     color: 'red',
     domain: 'SALES',
+    pii: { present: false },
     detail: {
       description: <>Most restrictive schema — requires both opportunity-level and region-level security attributes. Used for deal-level data.</>,
       rapBehavior: <>RAP checks BOTH <C>OPP_ID</C> and <C>REGION_ID</C>. Opportunity-level entitlement grants access to specific deals. Region grants access to all deals in a region.</>,
@@ -46,6 +48,7 @@ const schemas: SchemaInfo[] = [
     grainColumns: <><C>REGION_ID</C></>,
     color: 'blue',
     domain: 'SALES',
+    pii: { present: false },
     detail: {
       description: <>Aggregated to region grain — no opportunity-level detail. Used for regional dashboards and summaries.</>,
       rapBehavior: <>RAP checks <C>REGION_ID</C> only. Opportunity-level entitlements are ignored (no <C>OPP_ID</C> column exists).</>,
@@ -62,6 +65,7 @@ const schemas: SchemaInfo[] = [
     grainColumns: <>(High-level aggregates only)</>,
     color: 'amber',
     domain: 'SALES',
+    pii: { present: false },
     detail: {
       description: <>Highly aggregated — no row-level security attributes. Only <C>GLOBAL</C>-entitled users can access.</>,
       rapBehavior: <>RAP checks for <C>GLOBAL</C> <C>access_level</C> only. No opportunity or region filtering — data is already fully aggregated.</>,
@@ -79,6 +83,7 @@ const schemas: SchemaInfo[] = [
     grainColumns: <><C>DEPARTMENT_ID</C></>,
     color: 'blue',
     domain: 'HR',
+    pii: { present: false },
     detail: {
       description: <>Department-scoped HR data — headcount, attrition, compensation bands. Managers see only their department.</>,
       rapBehavior: <>RAP checks <C>DEPARTMENT_ID</C> against the user's entitled department. <C>GLOBAL</C> bypasses the filter for HR leadership.</>,
@@ -95,6 +100,7 @@ const schemas: SchemaInfo[] = [
     grainColumns: <><C>EMPLOYEE_ID</C>, <C>DEPARTMENT_ID</C></>,
     color: 'blue',
     domain: 'HR',
+    pii: { present: true, columns: ['EMAIL', 'FULL_NAME', 'SSN_LAST4'] },
     detail: {
       description: <>Most sensitive HR schema — individual employee records including PII, performance reviews, and compensation details. Dual-key access required.</>,
       rapBehavior: <>RAP checks BOTH <C>EMPLOYEE_ID</C> and <C>DEPARTMENT_ID</C>. Direct reports require employee-level entitlement. Department heads see all employees in their org.</>,
@@ -112,6 +118,7 @@ const schemas: SchemaInfo[] = [
     grainColumns: <>(Aggregates only)</>,
     color: 'amber',
     domain: 'FINANCE',
+    pii: { present: false },
     detail: {
       description: <>Consolidated financial reporting — P&L, budget summaries, forecast models. No line-item detail exposed. Restricted to finance leadership.</>,
       rapBehavior: <>RAP checks for <C>GLOBAL</C> <C>access_level</C> only. No department or cost-center filtering — data is pre-aggregated at the corporate level.</>,
@@ -217,6 +224,27 @@ const SchemaView = () => {
               </div>
 
               <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">PII Columns</p>
+                {schema.pii.present ? (
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-red-300">
+                      {schema.pii.columns?.map((col, i) => (
+                        <React.Fragment key={col}>
+                          <C>{col}</C>
+                          {i < (schema.pii.columns?.length ?? 0) - 1 && <span className="text-gray-600">,</span>}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-500">
+                      Masked column-level via <C>PII_POLICY</C> tag — masking applies independently of row-level entitlements.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-emerald-400/70">None — aggregates / non-PII attributes only</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">RAP Behavior</p>
                 <p className="text-xs text-gray-400 leading-relaxed">{schema.detail.rapBehavior}</p>
               </div>
@@ -236,6 +264,10 @@ const SchemaView = () => {
                   ))}
                 </div>
               </div>
+
+              <p className="text-[10px] text-gray-500 italic">
+                PII columns are masked column-level via <C>PII_POLICY</C>; row-level entitlements still apply on top.
+              </p>
             </div>
           </DetailPanel>
         </div>
