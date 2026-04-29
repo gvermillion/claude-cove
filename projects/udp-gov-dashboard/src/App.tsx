@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+// src/App.tsx
+import React, { useCallback } from 'react';
 import {
   Shield,
   Cpu,
@@ -8,7 +9,6 @@ import {
   Code,
   Globe,
   Settings,
-  Menu,
   Database,
   AlertTriangle,
   PanelLeftClose,
@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SidebarItem } from './components/primitives';
+import { ModeToggle, type Mode } from './components/ModeToggle';
+import { useLocalStorage } from './hooks/useLocalStorage';
 import OverviewView from './components/OverviewView';
 import SandboxView from './components/SandboxView';
 import EnforcementView from './components/EnforcementView';
@@ -24,10 +26,6 @@ import PolicyView from './components/PolicyView';
 import SchemaView from './components/SchemaView';
 import ExtensibilityView from './components/ExtensibilityView';
 import OpsView from './components/OpsView';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// App shell
-// ─────────────────────────────────────────────────────────────────────────────
 
 type TabId =
   | 'overview'
@@ -51,13 +49,23 @@ const menuItems: { id: TabId; label: string; icon: LucideIcon }[] = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [mode, setMode] = useLocalStorage<Mode>('udp-mode', 'exec');
+  const [activeTab, setActiveTab] = useLocalStorage<TabId>(
+    'udp-active-tab',
+    'overview',
+  );
+  const [isSidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
+    'udp-sidebar-open',
+    true,
+  );
 
-  const navigateTo = useCallback((tabId: string) => {
-    setActiveTab(tabId as TabId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  const navigateTo = useCallback(
+    (tabId: string) => {
+      setActiveTab(tabId as TabId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [setActiveTab],
+  );
 
   const views: Record<TabId, React.ReactNode> = {
     overview: <OverviewView onNavigate={navigateTo} />,
@@ -95,6 +103,9 @@ export default function App() {
             {isSidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeft size={16} />}
           </button>
         </div>
+
+        <ModeToggle mode={mode} onChange={setMode} collapsed={!isSidebarOpen} />
+
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto pb-6">
           {menuItems.map((item) => (
             <SidebarItem
