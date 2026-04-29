@@ -226,18 +226,13 @@ const SchemaView = () => {
               <div className="space-y-2">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">PII Columns</p>
                 {schema.pii.present ? (
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-red-300">
-                      {schema.pii.columns?.map((col, i) => (
-                        <React.Fragment key={col}>
-                          <C>{col}</C>
-                          {i < (schema.pii.columns?.length ?? 0) - 1 && <span className="text-gray-600">,</span>}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-gray-500">
-                      Masked column-level via <C>PII_POLICY</C> tag — masking applies independently of row-level entitlements.
-                    </p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-red-300">
+                    {schema.pii.columns?.map((col, i) => (
+                      <React.Fragment key={col}>
+                        <C>{col}</C>
+                        {i < (schema.pii.columns?.length ?? 0) - 1 && <span className="text-gray-600">,</span>}
+                      </React.Fragment>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-[11px] text-emerald-400/70">None — aggregates / non-PII attributes only</p>

@@ -202,7 +202,7 @@ const PiiInteractionSection = () => {
             given Gold table is a <span className="text-white font-semibold">prerequisite for Gold layer certification</span>.
           </p>
         </CalloutBox>
-        <CalloutBox title="ABAC + RBAC: layered access models" variant="amber">
+        <CalloutBox title="ABAC + RBAC: layered access models" variant="blue">
           <p>
             The default model is <span className="text-white font-semibold">ABAC</span> — access derives from attributes
             (region, owner, domain) recorded in <C>ENTITLEMENTS</C>. PII unmasking is the natural place for an{' '}
