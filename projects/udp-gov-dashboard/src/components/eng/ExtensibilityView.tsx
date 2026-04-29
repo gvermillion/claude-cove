@@ -115,30 +115,11 @@ const ExtensibilityView = () => {
       {/* ── Hub-and-Spoke Diagram ── */}
       <HubSpokeDiagram mode="eng" />
 
-      {/* ── Vendor-neutrality callout ── */}
-      <CalloutBox title="Vendor Neutrality" variant="blue">
-        <p>
-          Every platform named here is illustrative. The <C>ENTITLEMENTS</C> table is the universal policy interface.
-          Adding a new enforcement point requires only a lookup against this table — no redesign of access logic.
-        </p>
-      </CalloutBox>
-
-      {/* ── UDP synergy callout ── */}
-      <CalloutBox title="UDP Synergy" variant="emerald">
-        <p>
-          The UDP build handles the heavy infrastructure — environment setup, medallion architecture, automated ingestion.
-          From there, governance becomes a federated service that layers on with net-negative operational cost.
-        </p>
-      </CalloutBox>
-
       {/* ── Adding a New PEP walkthrough ── */}
       <div className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-6">
         <h3 className="text-white font-bold text-sm uppercase tracking-tight">
           Adding a New Enforcement Point (PEP)
         </h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          What happens when a new platform needs governance? Three steps — no governance redesign.
-        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
           <div>
