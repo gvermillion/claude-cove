@@ -111,8 +111,8 @@ const ExecRoadmapView: React.FC = () => {
                   label: 'AI Copilot Skills',
                   desc: 'Developers get routing and sharing guidance inline — no governance memorization required.',
                 },
-              ].map(({ label, desc }, i) => (
-                <li key={i} className="flex items-start gap-2">
+              ].map(({ label, desc }) => (
+                <li key={label} className="flex items-start gap-2">
                   <CheckCircle2
                     size={12}
                     className="text-emerald-500 mt-0.5 shrink-0"
