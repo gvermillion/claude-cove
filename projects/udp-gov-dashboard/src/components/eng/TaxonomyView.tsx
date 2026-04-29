@@ -32,9 +32,9 @@ const tagDefs: TagDef[] = [
     detail: {
       description: <>The primary organizational tag. Determines which RAP binds to the schema and which Domain Data Steward is responsible.</>,
       schemas: [
-        <><C>SALES_GRANULAR</C></>,
-        <><C>SALES_BY_REGION</C></>,
-        <><C>SALES_GLOBAL</C></>,
+        <><C>SALES__GRANULAR</C></>,
+        <><C>SALES__BY_REGION</C></>,
+        <><C>SALES__GLOBAL</C></>,
       ],
       rapEffect: <>RAP selected based on domain-specific business rules. SALES domain uses <C>unified_sales_policy</C>.</>,
     },
@@ -58,9 +58,9 @@ const tagDefs: TagDef[] = [
     detail: {
       description: <>The security grain determines which <C>ENTITLEMENTS</C> columns the RAP evaluates. This is the core routing mechanism.</>,
       schemas: [
-        <><C>SALES_GRANULAR</C> → <C>OPP_ID</C> + <C>REGION</C></>,
-        <><C>SALES_BY_REGION</C> → <C>REGION</C> only</>,
-        <><C>SALES_GLOBAL</C> → <C>GLOBAL</C> (admin only)</>,
+        <><C>SALES__GRANULAR</C> → <C>OPP_ID</C> + <C>REGION</C></>,
+        <><C>SALES__BY_REGION</C> → <C>REGION</C> only</>,
+        <><C>SALES__GLOBAL</C> → <C>GLOBAL</C> (admin only)</>,
       ],
       rapEffect: <>RAP <C>CASE</C> logic branches based on grain. <C>OPP_ID</C> grain checks opportunity-level access; <C>REGION</C> grain checks region-level.</>,
     },

@@ -25,7 +25,7 @@ interface SchemaInfo {
 const schemas: SchemaInfo[] = [
   // --- SALES ---
   {
-    name: 'SALES_GRANULAR',
+    name: 'SALES__GRANULAR',
     policy: 'FULL_RESTRICTION',
     grainColumns: <><C>OPPORTUNITY_ID</C>, <C>REGION_ID</C></>,
     color: 'red',
@@ -41,7 +41,7 @@ const schemas: SchemaInfo[] = [
     },
   },
   {
-    name: 'SALES_BY_REGION',
+    name: 'SALES__BY_REGION',
     policy: 'REGION_ONLY',
     grainColumns: <><C>REGION_ID</C></>,
     color: 'blue',
@@ -57,7 +57,7 @@ const schemas: SchemaInfo[] = [
     },
   },
   {
-    name: 'SALES_GLOBAL',
+    name: 'SALES__GLOBAL',
     policy: 'ADMIN_ONLY',
     grainColumns: <>(High-level aggregates only)</>,
     color: 'amber',
@@ -74,7 +74,7 @@ const schemas: SchemaInfo[] = [
   },
   // --- HR ---
   {
-    name: 'HR_BY_DEPARTMENT',
+    name: 'HR__BY_DEPARTMENT',
     policy: 'DEPT_ONLY',
     grainColumns: <><C>DEPARTMENT_ID</C></>,
     color: 'blue',
@@ -90,7 +90,7 @@ const schemas: SchemaInfo[] = [
     },
   },
   {
-    name: 'HR_INDIVIDUAL',
+    name: 'HR__INDIVIDUAL',
     policy: 'FULL_RESTRICTION',
     grainColumns: <><C>EMPLOYEE_ID</C>, <C>DEPARTMENT_ID</C></>,
     color: 'blue',
@@ -107,7 +107,7 @@ const schemas: SchemaInfo[] = [
   },
   // --- FINANCE ---
   {
-    name: 'FINANCE_GLOBAL',
+    name: 'FINANCE__GLOBAL',
     policy: 'ADMIN_ONLY',
     grainColumns: <>(Aggregates only)</>,
     color: 'amber',
