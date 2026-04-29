@@ -3,10 +3,12 @@ import { Globe } from 'lucide-react';
 import {
   SectionHeader,
   CalloutBox,
+  DataTable,
   StepSidebar,
   DetailPanel,
   PrevNextNav,
   C,
+  colorStyles,
 } from '../primitives';
 import { HubSpokeDiagram } from '../diagrams';
 
@@ -280,18 +282,6 @@ const ExtensibilityView = () => {
     setActiveStep(0);
   };
 
-  const colorAccent: Record<Recipe['color'], string> = {
-    blue: 'text-blue-400',
-    emerald: 'text-emerald-400',
-    amber: 'text-amber-400',
-  };
-
-  const activeBorderBg: Record<Recipe['color'], string> = {
-    blue: 'border-blue-600/40 bg-blue-600/10',
-    emerald: 'border-emerald-600/40 bg-emerald-600/10',
-    amber: 'border-amber-600/40 bg-amber-600/10',
-  };
-
   return (
     <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
       <SectionHeader
@@ -326,7 +316,7 @@ const ExtensibilityView = () => {
                   onClick={() => handleRecipeClick(i)}
                   className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 border ${
                     isActive
-                      ? `${activeBorderBg[r.color]} shadow-lg`
+                      ? `${colorStyles[r.color].border} ${colorStyles[r.color].bg} shadow-lg`
                       : 'border-transparent hover:bg-white/[0.03]'
                   }`}
                 >
@@ -335,7 +325,7 @@ const ExtensibilityView = () => {
                   </p>
                   <p
                     className={`text-[10px] mt-0.5 uppercase tracking-wide ${
-                      isActive ? colorAccent[r.color] : 'text-gray-600'
+                      isActive ? colorStyles[r.color].accent : 'text-gray-600'
                     }`}
                   >
                     {r.role}
@@ -349,7 +339,7 @@ const ExtensibilityView = () => {
           <DetailPanel activeKey={activeRecipe}>
             <div className="space-y-4">
               <div>
-                <p className={`text-[10px] font-bold uppercase tracking-widest ${colorAccent[recipe.color]}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${colorStyles[recipe.color].accent}`}>
                   {recipe.role}
                 </p>
                 <p className="text-white font-bold text-sm mt-1">{recipe.title}</p>
@@ -392,7 +382,12 @@ const ExtensibilityView = () => {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                     {recipe.code.language === 'sql' ? 'SQL Template' : 'Config Snippet'}
                   </p>
-                  <pre className="bg-[#0a0a0a] border border-white/15 rounded-lg p-4 text-xs font-mono text-gray-300 overflow-x-auto leading-relaxed">
+                  <pre
+                    tabIndex={0}
+                    role="region"
+                    aria-label={`${recipe.code.language.toUpperCase()} template for ${recipe.label}`}
+                    className="bg-[#0a0a0a] border border-white/15 rounded-lg p-4 text-xs font-mono text-gray-300 overflow-x-auto leading-relaxed focus:outline-none focus:ring-2 focus:ring-white/20"
+                  >
                     {recipe.code.content}
                   </pre>
                 </div>
@@ -407,33 +402,7 @@ const ExtensibilityView = () => {
         <h3 className="text-white font-bold text-xs uppercase tracking-widest">
           PEP Comparison: What&apos;s Reused, What&apos;s Platform-Specific
         </h3>
-        <div className="overflow-x-auto rounded-lg border border-white/20 bg-[#0f0f0f]">
-          <table className="w-full text-left text-sm text-gray-400">
-            <thead className="bg-white/5 text-white">
-              <tr>
-                {MATRIX_COLUMNS.map((col, i) => (
-                  <th key={i} className="px-5 py-3 font-semibold uppercase tracking-wider text-xs">
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {MATRIX_DATA.map((row, i) => (
-                <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-5 py-4 leading-relaxed font-semibold text-gray-300">
-                    {row[0]}
-                  </td>
-                  {row.slice(1).map((cell, j) => (
-                    <td key={j} className="px-5 py-4 leading-relaxed font-mono text-xs">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={MATRIX_COLUMNS} data={MATRIX_DATA} firstColumnEmphasis valueFontMono />
       </div>
 
       {/* Architecture Guarantee */}

@@ -137,7 +137,17 @@ export const CalloutBox = ({
 
 // --- Data table ---
 
-export const DataTable = ({ columns, data }: { columns: string[]; data: string[][] }) => (
+export const DataTable = ({
+  columns,
+  data,
+  firstColumnEmphasis = false,
+  valueFontMono = false,
+}: {
+  columns: string[];
+  data: string[][];
+  firstColumnEmphasis?: boolean;
+  valueFontMono?: boolean;
+}) => (
   <div className="overflow-x-auto rounded-lg border border-white/20 bg-[#0f0f0f]">
     <table className="w-full text-left text-sm text-gray-400">
       <thead className="bg-white/5 text-white">
@@ -153,7 +163,12 @@ export const DataTable = ({ columns, data }: { columns: string[]; data: string[]
         {data.map((row, i) => (
           <tr key={i} className="hover:bg-white/[0.02] transition-colors">
             {row.map((cell, j) => (
-              <td key={j} className="px-5 py-4 leading-relaxed">
+              <td
+                key={j}
+                className={`px-5 py-4 leading-relaxed${
+                  j === 0 && firstColumnEmphasis ? ' font-semibold text-gray-300' : ''
+                }${j > 0 && valueFontMono ? ' font-mono text-xs' : ''}`}
+              >
                 {cell}
               </td>
             ))}
