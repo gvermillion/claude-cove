@@ -285,23 +285,20 @@ Import `LayoutDashboard` from `lucide-react`.
 
 **Rule:** the **first** underscore separating domain from granularity becomes a dunder. Existing dunders within granularity tokens (none currently, but watch for it) remain single underscores.
 
-- [ ] **Step 1: Find all references**
+- [x] **Step 1: Find all references**
   Run: `rtk grep -n -E '(SALES|HR|FINANCE|THREAT)_(GRANULAR|BY_|GLOBAL|INDIVIDUAL)' src/`
 
-- [ ] **Step 2: Apply renames file by file**
+- [x] **Step 2: Apply renames file by file**
   Use `Edit` with `replace_all` per file. Verify no false positives in non-schema strings.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
   Run: `pnpm exec tsc --noEmit`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git commit -m "refactor(udp-dashboard): use dunder convention for schema domain__granularity names"
   ```
-
-**Success criteria:**
-- Every schema name follows `<DOMAIN>__<GRANULARITY>` pattern
-- No broken references; tsc green
+  Completed in commit `9634025` (SchemaView + TaxonomyView, 12 occurrences). Spec + code-quality reviews ✅.
 
 ---
 
