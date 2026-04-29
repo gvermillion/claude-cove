@@ -29,7 +29,6 @@ import {
   ExecRoadmapView,
 } from './components/exec';
 import {
-  OverviewView,
   SandboxView,
   EnforcementView,
   TaxonomyView,
@@ -41,7 +40,6 @@ import {
 
 type ExecTabId = 'summary' | 'architecture' | 'security' | 'roadmap';
 type EngTabId =
-  | 'overview'
   | 'sandbox'
   | 'enforcement'
   | 'taxonomy'
@@ -58,7 +56,6 @@ const execMenu: { id: ExecTabId; label: string; icon: LucideIcon }[] = [
 ];
 
 const engMenu: { id: EngTabId; label: string; icon: LucideIcon }[] = [
-  { id: 'overview', label: 'Exec Summary', icon: Shield },
   { id: 'sandbox', label: 'Developer Experience', icon: Cpu },
   { id: 'enforcement', label: 'Hardening', icon: Layers },
   { id: 'taxonomy', label: 'Tag Taxonomy', icon: Tags },
@@ -76,7 +73,7 @@ export default function App() {
   );
   const [engTab, setEngTab] = useLocalStorage<EngTabId>(
     'udp-eng-tab',
-    'overview',
+    'sandbox',
   );
   const [isSidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
     'udp-sidebar-open',
@@ -107,7 +104,6 @@ export default function App() {
   };
 
   const engViews: Record<EngTabId, React.ReactNode> = {
-    overview: <OverviewView onNavigate={navigateEng} />,
     sandbox: <SandboxView onNavigate={navigateEng} />,
     enforcement: <EnforcementView />,
     taxonomy: <TaxonomyView />,
