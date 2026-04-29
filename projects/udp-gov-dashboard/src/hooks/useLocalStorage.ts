@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * useLocalStorage<T>(key, initial)
@@ -30,14 +30,5 @@ export function useLocalStorage<T>(
     }
   }, [key, value]);
 
-  const setter = useCallback(
-    (next: T | ((prev: T) => T)) => {
-      setValue((prev) =>
-        typeof next === 'function' ? (next as (p: T) => T)(prev) : next,
-      );
-    },
-    [],
-  );
-
-  return [value, setter];
+  return [value, setValue];
 }

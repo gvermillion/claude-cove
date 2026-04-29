@@ -184,7 +184,7 @@ export default function App() {
           <span className="flex items-center gap-2 italic">
             <Database size={10} className="text-red-800" /> CROWDSTRIKE UDP
           </span>
-          <span>SILVER LAYER & GOVERNANCE</span>
+          <span>{mode === 'exec' ? 'GOVERNANCE OVERVIEW' : 'SILVER LAYER & GOVERNANCE'}</span>
         </div>
         <div className="flex items-center gap-2">
           <AlertTriangle size={12} className="text-red-800" />

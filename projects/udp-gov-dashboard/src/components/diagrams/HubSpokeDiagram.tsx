@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Database, Cloud, Bot, Snowflake, Plus } from 'lucide-react';
 import { DetailPanel, C } from '../primitives';
-
-type HubSpokeMode = 'exec' | 'eng';
+import type { Mode } from '../ModeToggle';
 
 interface SpokeNode {
   id: string;
@@ -177,7 +176,7 @@ const SpokeLine = ({
 };
 
 interface HubSpokeDiagramProps {
-  mode?: HubSpokeMode;
+  mode?: Mode;
 }
 
 export const HubSpokeDiagram: React.FC<HubSpokeDiagramProps> = ({
