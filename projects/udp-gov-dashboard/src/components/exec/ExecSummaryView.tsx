@@ -24,11 +24,11 @@ const ExecSummaryView: React.FC<ExecSummaryViewProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
       <HeroBlock mode="exec" />
-      <KeyConceptsGrid mode="exec" />
+      <KeyConceptsGrid />
       <GovernanceChallenge mode="exec" />
-      <CoreVulnerabilities mode="exec" />
-      <SolutionPatternViz mode="exec" />
-      <SolutionPatternsGrid mode="exec" />
+      <CoreVulnerabilities />
+      <SolutionPatternViz />
+      <SolutionPatternsGrid />
       <UDPSynergyCallout />
       <DocumentRoadmap mode="exec" onNavigate={onNavigate} />
     </div>

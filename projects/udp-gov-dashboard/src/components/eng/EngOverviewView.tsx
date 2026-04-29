@@ -24,11 +24,11 @@ const EngOverviewView: React.FC<EngOverviewViewProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
       <HeroBlock mode="eng" />
-      <KeyConceptsGrid mode="eng" />
+      <KeyConceptsGrid />
       <GovernanceChallenge mode="eng" />
-      <CoreVulnerabilities mode="eng" />
-      <SolutionPatternViz mode="eng" />
-      <SolutionPatternsGrid mode="eng" />
+      <CoreVulnerabilities />
+      <SolutionPatternViz />
+      <SolutionPatternsGrid />
       <UDPSynergyCallout />
       <DocumentRoadmap mode="eng" onNavigate={onNavigate} />
     </div>

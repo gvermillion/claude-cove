@@ -304,7 +304,7 @@ export const HeroBlock: React.FC<ModeProps> = ({ mode = 'exec' }) => {
  * Six-card grid of shared vocabulary (PDP, PEP, RAP, CTAS, ENTITLEMENTS, RLS).
  * Renders identically in both modes — these are foundational terms.
  */
-export const KeyConceptsGrid: React.FC<ModeProps> = () => (
+export const KeyConceptsGrid: React.FC = () => (
   <div className="space-y-4">
     <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
       Key Concepts
@@ -350,6 +350,8 @@ export const GovernanceChallenge: React.FC<ModeProps> = ({ mode = 'exec' }) => {
     mode === 'exec'
       ? 'In a typical multi-platform deployment, each platform has its own access rules.'
       : 'Today: each platform maintains its own access rules — no shared source of truth.';
+
+  const ActivePepIcon = PEP_ITEMS[activePep].icon;
 
   return (
     <div className="space-y-4">
@@ -414,10 +416,10 @@ export const GovernanceChallenge: React.FC<ModeProps> = ({ mode = 'exec' }) => {
         <DetailPanel activeKey={activePep}>
           <div className="rounded-xl border border-white/15 bg-[#111] p-5 space-y-3 h-full">
             <div className="flex items-center gap-2">
-              {React.createElement(PEP_ITEMS[activePep].icon, {
-                size: 16,
-                className: colorStyles[PEP_ITEMS[activePep].color].accent,
-              })}
+              <ActivePepIcon
+                size={16}
+                className={colorStyles[PEP_ITEMS[activePep].color].accent}
+              />
               <h4 className="text-sm font-bold text-white uppercase tracking-tight">
                 {PEP_ITEMS[activePep].label} Enforcement
               </h4>
@@ -444,7 +446,7 @@ export const GovernanceChallenge: React.FC<ModeProps> = ({ mode = 'exec' }) => {
  * Mapping Bottleneck) + DetailPanel. Same content for both audiences — the
  * <C> primitive renders inline-code identically regardless of mode.
  */
-export const CoreVulnerabilities: React.FC<ModeProps> = () => {
+export const CoreVulnerabilities: React.FC = () => {
   const [activeVuln, setActiveVuln] = useState(0);
 
   return (
@@ -516,7 +518,7 @@ export const CoreVulnerabilities: React.FC<ModeProps> = () => {
  * Maximising-UDP-Investment / Multi-Platform-Vendor-Neutrality info cards.
  * Identical content across modes.
  */
-export const SolutionPatternViz: React.FC<ModeProps> = () => (
+export const SolutionPatternViz: React.FC = () => (
   <div className="space-y-4">
     <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
       The Solution Pattern
@@ -610,7 +612,7 @@ export const SolutionPatternViz: React.FC<ModeProps> = () => (
  * both audiences — executives benefit from seeing standards (NIST, ABAC) as
  * signal of architectural rigor.
  */
-export const SolutionPatternsGrid: React.FC<ModeProps> = () => (
+export const SolutionPatternsGrid: React.FC = () => (
   <div className="space-y-4">
     <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
       Solution Patterns Employed
