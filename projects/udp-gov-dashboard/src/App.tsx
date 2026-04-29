@@ -13,21 +13,34 @@ import {
   AlertTriangle,
   PanelLeftClose,
   PanelLeft,
+  Briefcase,
+  Network,
+  ShieldCheck,
+  Map,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SidebarItem } from './components/primitives';
 import { ModeToggle, type Mode } from './components/ModeToggle';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import OverviewView from './components/eng/OverviewView';
-import SandboxView from './components/eng/SandboxView';
-import EnforcementView from './components/eng/EnforcementView';
-import TaxonomyView from './components/eng/TaxonomyView';
-import PolicyView from './components/eng/PolicyView';
-import SchemaView from './components/eng/SchemaView';
-import ExtensibilityView from './components/eng/ExtensibilityView';
-import OpsView from './components/eng/OpsView';
+import {
+  ExecSummaryView,
+  ExecArchitectureView,
+  ExecSecurityView,
+  ExecRoadmapView,
+} from './components/exec';
+import {
+  OverviewView,
+  SandboxView,
+  EnforcementView,
+  TaxonomyView,
+  PolicyView,
+  SchemaView,
+  ExtensibilityView,
+  OpsView,
+} from './components/eng';
 
-type TabId =
+type ExecTabId = 'summary' | 'architecture' | 'security' | 'roadmap';
+type EngTabId =
   | 'overview'
   | 'sandbox'
   | 'enforcement'
@@ -37,7 +50,14 @@ type TabId =
   | 'extensibility'
   | 'ops';
 
-const menuItems: { id: TabId; label: string; icon: LucideIcon }[] = [
+const execMenu: { id: ExecTabId; label: string; icon: LucideIcon }[] = [
+  { id: 'summary', label: 'Summary', icon: Briefcase },
+  { id: 'architecture', label: 'Architecture', icon: Network },
+  { id: 'security', label: 'Security', icon: ShieldCheck },
+  { id: 'roadmap', label: 'Roadmap', icon: Map },
+];
+
+const engMenu: { id: EngTabId; label: string; icon: LucideIcon }[] = [
   { id: 'overview', label: 'Exec Summary', icon: Shield },
   { id: 'sandbox', label: 'Developer Experience', icon: Cpu },
   { id: 'enforcement', label: 'Hardening', icon: Layers },
@@ -50,8 +70,12 @@ const menuItems: { id: TabId; label: string; icon: LucideIcon }[] = [
 
 export default function App() {
   const [mode, setMode] = useLocalStorage<Mode>('udp-mode', 'exec');
-  const [activeTab, setActiveTab] = useLocalStorage<TabId>(
-    'udp-active-tab',
+  const [execTab, setExecTab] = useLocalStorage<ExecTabId>(
+    'udp-exec-tab',
+    'summary',
+  );
+  const [engTab, setEngTab] = useLocalStorage<EngTabId>(
+    'udp-eng-tab',
     'overview',
   );
   const [isSidebarOpen, setSidebarOpen] = useLocalStorage<boolean>(
@@ -59,17 +83,32 @@ export default function App() {
     true,
   );
 
-  const navigateTo = useCallback(
+  const navigateExec = useCallback(
     (tabId: string) => {
-      setActiveTab(tabId as TabId);
+      setExecTab(tabId as ExecTabId);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [setActiveTab],
+    [setExecTab],
   );
 
-  const views: Record<TabId, React.ReactNode> = {
-    overview: <OverviewView onNavigate={navigateTo} />,
-    sandbox: <SandboxView onNavigate={navigateTo} />,
+  const navigateEng = useCallback(
+    (tabId: string) => {
+      setEngTab(tabId as EngTabId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [setEngTab],
+  );
+
+  const execViews: Record<ExecTabId, React.ReactNode> = {
+    summary: <ExecSummaryView onNavigate={navigateExec} />,
+    architecture: <ExecArchitectureView />,
+    security: <ExecSecurityView />,
+    roadmap: <ExecRoadmapView />,
+  };
+
+  const engViews: Record<EngTabId, React.ReactNode> = {
+    overview: <OverviewView onNavigate={navigateEng} />,
+    sandbox: <SandboxView onNavigate={navigateEng} />,
     enforcement: <EnforcementView />,
     taxonomy: <TaxonomyView />,
     schema: <SchemaView />,
@@ -77,6 +116,12 @@ export default function App() {
     extensibility: <ExtensibilityView />,
     ops: <OpsView />,
   };
+
+  const activeView =
+    mode === 'exec' ? execViews[execTab] : engViews[engTab];
+  const menuItems = mode === 'exec' ? execMenu : engMenu;
+  const activeId: string = mode === 'exec' ? execTab : engTab;
+  const onNavigate = mode === 'exec' ? navigateExec : navigateEng;
 
   return (
     <div className="min-h-screen bg-[#080808] text-white flex font-sans selection:bg-red-600/30">
@@ -112,8 +157,8 @@ export default function App() {
               key={item.id}
               icon={item.icon}
               label={isSidebarOpen ? item.label : ''}
-              active={activeTab === item.id}
-              onClick={() => navigateTo(item.id)}
+              active={activeId === item.id}
+              onClick={() => onNavigate(item.id)}
             />
           ))}
         </nav>
@@ -125,7 +170,7 @@ export default function App() {
         } p-10 pb-24`}
       >
         <div className="max-w-5xl mx-auto">
-          <div className="min-h-[70vh]">{views[activeTab]}</div>
+          <div className="min-h-[70vh]">{activeView}</div>
         </div>
       </main>
 
