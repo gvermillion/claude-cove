@@ -402,21 +402,22 @@ Render as 3-column or stacked sections with the existing `SandboxView` styling (
    - `PDP` definition: append "(ABAC source of truth)"
    - Add new entry `RBAC` (Role-Based Access Control) — definition: "Layered overlay used for sensitive-data exemptions like PII unmasking; complements ABAC."
 
-- [ ] **Step 1: SchemaView — add PII column to data table**
+- [x] **Step 1: SchemaView — add PII column to data table**
 
-- [ ] **Step 2: TaxonomyView — add ABAC+RBAC callout**
+- [x] **Step 2: TaxonomyView — add ABAC+RBAC callout**
 
-- [ ] **Step 3: ExecSecurityView — add PII risk card**
+- [x] **Step 3: ExecSecurityView — add PII risk card**
 
-- [ ] **Step 4: summaryContent — extend Key Concepts (PDP description + new RBAC entry)**
+- [x] **Step 4: summaryContent — extend Key Concepts (PDP description + new RBAC entry)**
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
   Run: `pnpm exec tsc --noEmit`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git commit -m "feat(udp-dashboard): make PII capabilities explicit + introduce RBAC overlay narrative"
   ```
+  Completed in commit `d03757f`. Quality cleanup (drop dup subtitle, blue callout) in `b7a3978`.
 
 **Success criteria:**
 - PII visible at-a-glance in SchemaView
