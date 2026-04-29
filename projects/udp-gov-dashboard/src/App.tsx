@@ -57,10 +57,10 @@ const execMenu: { id: ExecTabId; label: string; icon: LucideIcon }[] = [
 
 const engMenu: { id: EngTabId; label: string; icon: LucideIcon }[] = [
   { id: 'sandbox', label: 'Developer Experience', icon: Cpu },
-  { id: 'enforcement', label: 'Hardening', icon: Layers },
-  { id: 'taxonomy', label: 'Tag Taxonomy', icon: Tags },
   { id: 'schema', label: 'Schema Design', icon: Table2 },
+  { id: 'taxonomy', label: 'Tag Taxonomy', icon: Tags },
   { id: 'policy', label: 'Policy Logic', icon: Code },
+  { id: 'enforcement', label: 'Hardening', icon: Layers },
   { id: 'extensibility', label: 'Extensibility', icon: Globe },
   { id: 'ops', label: 'Roadmap & Ops', icon: Settings },
 ];
