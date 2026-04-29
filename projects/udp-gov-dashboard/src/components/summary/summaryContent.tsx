@@ -32,15 +32,14 @@ import {
   C,
   colorStyles,
 } from '../primitives';
+import type { Mode } from '../ModeToggle';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SummaryMode = 'exec' | 'eng';
-
 interface ModeProps {
-  mode?: SummaryMode;
+  mode?: Mode;
 }
 
 interface NavigableModeProps extends ModeProps {
