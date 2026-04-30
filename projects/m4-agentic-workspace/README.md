@@ -35,11 +35,15 @@ For non-technical setup, use the onboarding skill in Claude Code: `/onboarding`
 
 | Service | URL | Purpose |
 |---|---|---|
-| Open WebUI | http://localhost:3000 | Chat with local Ollama models |
+| Open WebUI | http://localhost:3009 | Chat with local Ollama models |
 | n8n | http://localhost:5678 | Workflow orchestration |
-| Agent Host | http://localhost:8000 | PydanticAI signal extraction API |
-| obsidian-mcp | http://localhost:3001 | Vault MCP interface for Claude |
+| Agent Host | http://localhost:8003 | PydanticAI signal extraction API |
+| obsidian-mcp | http://localhost:3004 | Vault MCP interface for Claude |
 | Qdrant | http://localhost:6333 | Vector memory |
+| Phoenix | http://localhost:6006 | LLM tracing & observability (OTLP on 4317/4318) |
+
+All LLM calls in `agent-host` emit OpenInference spans to Phoenix via OTLP HTTP.
+Open the Phoenix UI to inspect prompts, responses, token usage, and latency per agent run.
 
 ## Skills
 
