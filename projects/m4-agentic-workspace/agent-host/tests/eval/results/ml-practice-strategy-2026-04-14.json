@@ -1,0 +1,12 @@
+{
+  "entities": [],
+  "risks": [],
+  "opportunities": [],
+  "tasks": [],
+  "dropped": [],
+  "synthesis": {
+    "meeting_summary": "### Welcome & Introductions\n- Brian Cohn Welke joined as Principal ML Solutions Architect: PhD CS, 10+ yrs ML, healthcare/life sciences/energy specialist\n- Team now covers all US time zones; Eric Carpenter won Milwaukee meatball competition\n\n### Utilization & Staffing\n- Utilization ~70-75%, dropping; bench: Latium, Lucas, Bruno, David (new MLEs)\n- Bruno interviewing at Chick-fil-A; Nikke leaving, needs backfill; upcoming: Leonard, InterNova, Precisely\n- George \u2192 Leonard (next week); need Latium MLE for Precisely next week\n- CrowdStrike legal: positive tone shift, 1-2 weeks from closing\n\n### Pipeline\n- $12M vanished from Q1, $9M appeared in Q3; current ~$18M, need 2/3 to hit $12.5M target\n- Q-IT dropped $5M\u2192$1.25M unexplained; Stride largest opp (could take $5M immediately)\n- Norwegian Cruise Lines: $700K pitched successfully; Andrew seeking pipeline analysis volunteers\n\n### Technology Roadmap\n- \"Wait and see\" objection emerging; Precisely debating MCP vs Snowflake releases\n- Solutions: Laura Martinelli (Snowflake partner SE), product roadmap access, preserve optionality\n- Garrett designated ML practice point person for Snowflake roadmap\n\n### AWS Partnership\n- Murray flying to Minneapolis Monday for big AWS review with Brian\n- Recent wins: Workday (resounding yes), Cook Unity (downstream potential), Digital Lock (training)\n- Upcoming: Delta meeting May with Todd in Atlanta; CrowdStrike = AWS+Snowflake opportunity\n\n### Agentic Delivery Framework\n- Omar's skills-based framework: reduces talk-to-data projects 6-8wks\u21924wks, enables fixed-bid, cost $100K\u2192$40K\n- Next: Marketing strategy meeting with Grant, Omar, Gary",
+    "citations": []
+  },
+  "p1_thinking": {}
+}

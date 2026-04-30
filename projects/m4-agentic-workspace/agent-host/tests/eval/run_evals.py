@@ -41,6 +41,7 @@ import httpx
 
 from golden_evals import (
     ALL_CASES,
+    Dropped,
     EvalCase,
     ExpectedEntity,
     ExpectedOpportunity,
@@ -142,17 +143,34 @@ def _describe_entity(e: ExpectedEntity) -> str:
     return f"{e.name} ({e.relationship})"
 
 
+def _get_desc(item, *attrs: str) -> str:
+    """Get the description-like field from a dict or object, trying multiple names."""
+    if isinstance(item, dict):
+        for a in attrs:
+            if a in item and item[a]:
+                return item[a]
+        return ""
+    for a in attrs:
+        val = getattr(item, a, None)
+        if val:
+            return val
+    return ""
+
+
 def _describe_risk(r: ExpectedRisk) -> str:
-    return f"[{r.severity}] {r.description[:70]}"
+    desc = _get_desc(r, "summary", "description")
+    return f"[{r.severity}] {desc[:70]}"
 
 
 def _describe_opp(o: ExpectedOpportunity) -> str:
-    return f"[{o.type}] {o.description[:70]}"
+    desc = _get_desc(o, "name", "description")
+    return f"[{o.type}] {desc[:70]}"
 
 
 def _describe_task(t: ExpectedTask) -> str:
+    desc = _get_desc(t, "action", "description")
     owner = f" → {t.owner}" if t.owner else ""
-    return f"{t.description[:70]}{owner}"
+    return f"{desc[:70]}{owner}"
 
 
 def _score_entities(returned: list[dict], expected: list[ExpectedEntity]) -> CategoryScore:
@@ -181,12 +199,13 @@ def _score_signals(
     expected: list,
     keywords_fn,
     describe_fn,
+    ret_desc_keys: tuple[str, ...] = ("summary", "name", "action", "description"),
 ) -> CategoryScore:
     found, missed = [], []
     tp = 0
     matched_exp: set[int] = set()
     for ret in returned:
-        desc = ret.get("description", "")
+        desc = _get_desc(ret, *ret_desc_keys)
         for i, exp in enumerate(expected):
             if i not in matched_exp and _keyword_match(desc, keywords_fn(exp)):
                 tp += 1
@@ -210,19 +229,19 @@ def evaluate_case(case: EvalCase, response: dict) -> CaseResult:
     risks_score = _score_signals(
         response.get("risks", []),
         case.risks,
-        lambda r: _keywords_from_description(r.description),
+        lambda r: _keywords_from_description(_get_desc(r, "summary", "description")),
         _describe_risk,
     )
     opps_score = _score_signals(
         response.get("opportunities", []),
         case.opportunities,
-        lambda o: _keywords_from_description(o.description),
+        lambda o: _keywords_from_description(_get_desc(o, "name", "description")),
         _describe_opp,
     )
     tasks_score = _score_signals(
         response.get("tasks", []),
         case.tasks,
-        lambda t: _keywords_from_description(t.description),
+        lambda t: _keywords_from_description(_get_desc(t, "action", "description")),
         _describe_task,
     )
     return CaseResult(

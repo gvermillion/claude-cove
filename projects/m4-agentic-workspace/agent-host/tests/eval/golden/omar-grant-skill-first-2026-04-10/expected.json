@@ -1,0 +1,117 @@
+{
+  "meeting_date": "2026-04-10",
+  "entities": [
+    {
+      "name": "Omar Abid",
+      "role": "Engineer",
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": ["Omar"],
+      "evidence": "Omar identified overlap between current workflows"
+    },
+    {
+      "name": "Dominic",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Dominic liked skills-first workflow from Omar's blog post"
+    }
+  ],
+  "risks": [
+    {
+      "summary": "Skill overlap between Grant's setup skill and Omar's create-agent skill risks duplicated workflows",
+      "severity": "low",
+      "project": "rook",
+      "evidence": "Grant's setup skill assumes existing agent vs Omar's create agent skill"
+    },
+    {
+      "summary": "Grant defaulting to hero-ball rather than delegating may bottleneck platform work",
+      "severity": "low",
+      "project": "rook",
+      "evidence": "Grant acknowledged need for better delegation vs \"hero ball\" approach"
+    }
+  ],
+  "opportunities": [
+    {
+      "name": "Productize skills-first workflow as fixed-bid offering",
+      "type": "workflow",
+      "account": null,
+      "value_hint": null,
+      "stage_hint": "exploration",
+      "evidence": "Potential to pitch as fixed-bid offering with cost reduction"
+    },
+    {
+      "name": "Apply skills-first process to Snowflake Cortex agents",
+      "type": "workflow",
+      "account": null,
+      "value_hint": null,
+      "stage_hint": "exploration",
+      "evidence": "Could leverage well-defined process for Snowflake Cortex agents"
+    }
+  ],
+  "tasks": [
+    {
+      "action": "Connect Rook front-end and back-end to the 311 agent",
+      "owner": "Grant Vermillion",
+      "due_hint": "end of day",
+      "commitment": "hard",
+      "blocks": "demo readiness next week",
+      "evidence": "Goal: front-end/back-end connected to 311 agent by end of day"
+    },
+    {
+      "action": "Deploy Rook agent evaluation platform to CrowdStrike",
+      "owner": "Grant Vermillion",
+      "due_hint": "next week",
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "Planning CrowdStrike deployment next week"
+    },
+    {
+      "action": "Review Rook platform and open PR after Grant's merges land",
+      "owner": "Omar Abid",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Omar will review platform in detail and create PR after Grant's merges"
+    },
+    {
+      "action": "Reorganize skills to eliminate overlap between setup and create-agent skills",
+      "owner": null,
+      "due_hint": null,
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "Need to reorganize some skills to minimize duplication"
+    },
+    {
+      "action": "Have Rook demo ready for internal marketing",
+      "owner": "Grant Vermillion",
+      "due_hint": "next week",
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "Demo ready for next week"
+    }
+  ],
+  "dropped": [
+    {
+      "text": "Grant spent $15 in personal Claude credits over 6 days development",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "Runs until convergence or max steps reached",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "Rook",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "311 agent",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Snowflake Cortex",
+      "reason": "stoplist_entity"
+    }
+  ]
+}

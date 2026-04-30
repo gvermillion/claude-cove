@@ -4,12 +4,17 @@ Each case was derived from real Granola meeting notes. The expected signals
 represent ground-truth labels: reviewable, non-exhaustive, but specific enough
 to measure recall without being so broad that any output passes.
 
-Expected signals use the same field structure as extractor output so the LLM
-judge can compare apples-to-apples rather than keywords vs descriptions.
+Expected signals use the canonical post-synthesize.merge schema so the LLM
+judge can compare apples-to-apples.  Field names match golden/*/expected.json:
+
+  entities:      name, role, org, relationship, aliases, evidence
+  risks:         summary, severity, project, evidence
+  opportunities: name, type, account, value_hint, stage_hint, evidence
+  tasks:         action, owner, due_hint, commitment, blocks, evidence
 
 Matching strategy:
 - Entities: case-insensitive name substring match
-- Risks / Opportunities / Tasks: word-overlap match derived from description (>=2 of N words required)
+- Risks / Opportunities / Tasks: word-overlap match derived from summary/name/action (>=2 of N words required)
 - Severity / type / relationship: exact string match when scored
 
 Usage:
@@ -22,29 +27,52 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class Dropped:
+    text: str
+    reason: str  # fact_not_task | duplicate | stoplist_entity | ungrounded | wrong_category
+
+
+@dataclass
 class ExpectedEntity:
     name: str  # substring match, case-insensitive
-    relationship: str  # client | colleague | stakeholder | vendor | unknown
-    title: str | None = None  # partial match if provided
-    evidence_required: bool = False  # when True, eval checks evidence_quote is non-empty
+    relationship: str  # client | colleague | stakeholder | vendor | partner | prospect | unknown
+    role: str | None = None  # job title / function
+    org: str | None = None  # company / org name
+    aliases: list[str] = field(default_factory=list)
+    evidence: str = ""  # verbatim quote (<=160 chars)
+    # Legacy informational fields (not in canonical schema but kept for data richness)
+    rapport_notes: list[str] = field(default_factory=list)
+    evidence_quote: str | None = None
+    source_line: int | None = None
+    confidence: str = "verified"  # verified | inferred
 
 
 @dataclass
 class ExpectedRisk:
-    description: str  # matches actual Risk.description field
+    summary: str  # canonical: was 'description'
     severity: str  # high | medium | low
+    project: str | None = None  # canonical: was 'project_slug'
+    evidence: str = ""
 
 
 @dataclass
 class ExpectedOpportunity:
-    description: str  # matches actual Opportunity.description field
-    type: str  # expansion | workflow | lateral
+    name: str  # canonical: was 'description'
+    type: str  # new_logo | expansion | lateral | workflow
+    account: str | None = None
+    value_hint: str | None = None
+    stage_hint: str | None = None
+    evidence: str = ""
 
 
 @dataclass
 class ExpectedTask:
-    description: str  # matches actual Task.description field
+    action: str  # canonical: was 'description'
     owner: str | None = None  # substring match if provided
+    due_hint: str | None = None  # canonical: was 'eta'; relative phrase, NOT ISO date
+    commitment: str = "implied"  # hard | soft | implied
+    blocks: str | None = None
+    evidence: str = ""
 
 
 @dataclass
@@ -57,6 +85,7 @@ class EvalCase:
     risks: list[ExpectedRisk] = field(default_factory=list)
     opportunities: list[ExpectedOpportunity] = field(default_factory=list)
     tasks: list[ExpectedTask] = field(default_factory=list)
+    dropped: list[Dropped] = field(default_factory=list)
     participants: list[dict] = field(default_factory=list)  # {name, email, company}
     granola_summary: str | None = None
 
@@ -110,29 +139,29 @@ Next steps:
 - Abby to run comparisons between new logo vs expansion metrics
 """,
     entities=[
-        ExpectedEntity("Saichakravarthy Annam", "stakeholder", "CrowdStrike"),
-        ExpectedEntity("Abby Liu", "stakeholder", "CrowdStrike"),
-        ExpectedEntity("Gabriel Viana", "colleague"),
-        ExpectedEntity("Maria Schumacher", "colleague"),
-        ExpectedEntity("Stephanie Ortgies", "colleague"),
+        ExpectedEntity("Saichakravarthy Annam", "stakeholder", org="CrowdStrike", aliases=["Chakra"]),
+        ExpectedEntity("Abby Liu", "stakeholder", org="CrowdStrike"),
+        ExpectedEntity("Gabriel Viana", "colleague", org="phData"),
+        ExpectedEntity("Maria Schumacher", "colleague", org="phData"),
+        ExpectedEntity("Stephanie Ortgies", "colleague", org="phData"),
     ],
     risks=[
-        ExpectedRisk("Chakra needs to grant permissions to the phData developer role before going on PTO", "high"),
-        ExpectedRisk("S1 pipe expansion metric is not available in the production dataset", "medium"),
-        ExpectedRisk("End-to-end access via test query has not been validated yet", "medium"),
+        ExpectedRisk("Chakra must grant phData developer role permissions before going on PTO", "high"),
+        ExpectedRisk("S1 pipe expansion metric not yet in production dataset", "medium"),
+        ExpectedRisk("End-to-end access via test query not yet validated", "medium"),
     ],
     opportunities=[
-        ExpectedOpportunity("Embed Agent Management Platform into Drive Nexus for complete system visibility", "expansion"),
-        ExpectedOpportunity("Telemetry stored in Snowflake is compatible with Prometheus and DataDog observability tools", "lateral"),
-        ExpectedOpportunity("Agent Management Platform is being ported to AWS Agent Forge", "lateral"),
+        ExpectedOpportunity("Embed Agent Management Platform into Drive Nexus", "expansion", account="CrowdStrike"),
+        ExpectedOpportunity("Prometheus/DataDog telemetry integration", "lateral", account="CrowdStrike"),
+        ExpectedOpportunity("Port Agent Management Platform to AWS Agent Forge", "lateral", account="CrowdStrike"),
     ],
     tasks=[
-        ExpectedTask("Chakra to grant permissions to phData team before PTO", "Chakra"),
-        ExpectedTask("Gabriel to validate end-to-end access via test query", "Gabriel"),
-        ExpectedTask("Complete Drive Nexus vs Cortex Analyst evaluation using same 40 questions"),
-        ExpectedTask("Deploy Gabriel's updates to dev Slack channel for testing", "Gabriel"),
-        ExpectedTask("Abby to run comparisons between new logo vs expansion metrics", "Abby"),
-        ExpectedTask("Schedule deep-dive session on evaluation methodology when Chakra returns"),
+        ExpectedTask("Grant permissions to phData team before PTO", "Chakra", due_hint="before PTO", commitment="hard", blocks="Gabriel end-to-end access validation"),
+        ExpectedTask("Validate end-to-end access via test query", "Gabriel", commitment="hard"),
+        ExpectedTask("Complete Drive Nexus vs Cortex Analyst evaluation", due_hint="next week", commitment="hard"),
+        ExpectedTask("Deploy Gabriel's updates to dev Slack for testing", "Gabriel", commitment="hard"),
+        ExpectedTask("Run comparisons between new logo vs expansion metrics", "Abby", commitment="hard"),
+        ExpectedTask("Schedule deep-dive on evaluation methodology when Chakra returns", due_hint="when Chakra returns", commitment="soft"),
     ],
     participants=[
         {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
@@ -233,12 +262,12 @@ Next steps:
 - Potential guest speaker opportunity: Vincent from phData AI strategy
 """,
     entities=[
-        ExpectedEntity("Sergio Valenzuela", "stakeholder", "Trimble"),
-        ExpectedEntity("Joe Mastroianni", "stakeholder", "Trimble"),
-        ExpectedEntity("Victor Solano", "stakeholder", "Trimble"),
-        ExpectedEntity("Melissa Bielagus", "colleague"),
-        ExpectedEntity("Eric Schoch", "colleague"),
-        ExpectedEntity("Jordan Birdsell", "colleague"),
+        ExpectedEntity("Sergio Valenzuela", "stakeholder", org="Trimble"),
+        ExpectedEntity("Joe Mastroianni", "stakeholder", org="Trimble"),
+        ExpectedEntity("Victor Solano", "stakeholder", org="Trimble"),
+        ExpectedEntity("Melissa Bielagus", "colleague", org="phData"),
+        ExpectedEntity("Eric Schoch", "colleague", org="phData"),
+        ExpectedEntity("Jordan Birdsell", "colleague", org="phData"),
     ],
     risks=[
         ExpectedRisk("Potential friction between Agentic AI internal team and external consultants due to loyalty concerns", "medium"),
@@ -247,17 +276,17 @@ Next steps:
         ExpectedRisk("No governance or security process exists for AI product evaluation", "medium"),
     ],
     opportunities=[
-        ExpectedOpportunity("Field Systems unbiased data landscape assessment and Snowflake migration opportunity", "expansion"),
-        ExpectedOpportunity("Data products on Snowflake marketplace for monetization", "expansion"),
-        ExpectedOpportunity("AI governance and security process for AI product evaluation", "workflow"),
-        ExpectedOpportunity("Replace Tableau with conversational analytics capabilities", "expansion"),
+        ExpectedOpportunity("Field Systems unbiased data landscape assessment and Snowflake migration", "expansion", account="Trimble"),
+        ExpectedOpportunity("Data products on Snowflake marketplace for monetization", "expansion", account="Trimble"),
+        ExpectedOpportunity("AI governance and security process for AI product evaluation", "workflow", account="Trimble"),
+        ExpectedOpportunity("Replace Tableau with conversational analytics capabilities", "expansion", account="Trimble"),
     ],
     tasks=[
-        ExpectedTask("Execute MSA and NDA to open deeper conversations"),
-        ExpectedTask("Sergio to share RFP for Field Systems discovery work", "Sergio"),
-        ExpectedTask("Include Joe Mastroianni in future discussions"),
-        ExpectedTask("Share meeting recording with James and Joe"),
-        ExpectedTask("Potential guest speaker opportunity with Vincent from phData on AI strategy"),
+        ExpectedTask("Execute MSA and NDA to open deeper conversations", commitment="hard"),
+        ExpectedTask("Share RFP for Field Systems discovery work", "Sergio", commitment="hard"),
+        ExpectedTask("Include Joe Mastroianni in future discussions", commitment="soft"),
+        ExpectedTask("Share meeting recording with James and Joe", commitment="hard"),
+        ExpectedTask("Potential guest speaker opportunity with Vincent from phData on AI strategy", commitment="soft"),
     ],
     participants=[
         {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
@@ -345,23 +374,23 @@ Grant mentioned planning an agentic plan cache layer with a RAG component to cac
 complex query reasoning and reduce token usage on repeated complex questions.
 """,
     entities=[
-        ExpectedEntity("Jordy Antunes", "colleague"),
-        ExpectedEntity("Brandon", "colleague"),
+        ExpectedEntity("Jordy Antunes", "colleague", org="phData"),
+        ExpectedEntity("Brandon", "colleague", org="phData"),
     ],
     risks=[
-        ExpectedRisk("MetroTech Phase 2 has 1.5 weeks remaining to deliver all features", "high"),
-        ExpectedRisk("Problematic Phase 1 ingestions are unresolved and blocking MetroTech Phase 2 delivery", "medium"),
+        ExpectedRisk("MetroTech Phase 2 has 1.5 weeks remaining to deliver all features", "high", project="metrotech"),
+        ExpectedRisk("Problematic Phase 1 ingestions are unresolved and blocking MetroTech Phase 2 delivery", "medium", project="metrotech"),
         ExpectedRisk("Some Brazil team members have strong complaints about CLT transition reducing take-home pay", "medium"),
         ExpectedRisk("DSPy optimization runs take 8+ hours due to sequential processing", "low"),
     ],
     opportunities=[
-        ExpectedOpportunity("Token optimization via Rust bash interceptor and pre/post tool hooks saves millions of tokens monthly", "workflow"),
-        ExpectedOpportunity("Agentic plan cache layer with RAG component to reduce token usage on repeated complex questions", "workflow"),
+        ExpectedOpportunity("Token optimization via Rust bash interceptor and pre/post tool hooks", "workflow"),
+        ExpectedOpportunity("Agentic plan cache layer with RAG component to reduce token usage", "workflow"),
     ],
     tasks=[
-        ExpectedTask("Brandon to resolve MetroTech Phase 1 ingestion scope with Tyler", "Brandon"),
-        ExpectedTask("Fix frontend demo mode in evaluation framework", "Grant"),
-        ExpectedTask("Implement agentic plan cache layer with RAG component", "Grant"),
+        ExpectedTask("Resolve MetroTech Phase 1 ingestion scope with Tyler", "Brandon", commitment="hard"),
+        ExpectedTask("Fix frontend demo mode in evaluation framework", "Grant", commitment="hard"),
+        ExpectedTask("Implement agentic plan cache layer with RAG component", "Grant", commitment="soft"),
     ],
     participants=[
         {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
@@ -441,14 +470,14 @@ roughly $100K to $40K per engagement. A marketing strategy meeting needs to be
 scheduled with Grant, Omar, and Gary.
 """,
     entities=[
-        ExpectedEntity("Brian Cohn Welke", "colleague", "Principal ML Solutions Architect"),
-        ExpectedEntity("Murray Webb", "colleague"),
-        ExpectedEntity("Brandon Veber", "colleague"),
-        ExpectedEntity("Andrew Evans", "colleague"),
-        ExpectedEntity("Dominick Rocco", "colleague"),
-        ExpectedEntity("Garrett Springer", "colleague"),
-        ExpectedEntity("Eric Carpenter", "colleague"),
-        ExpectedEntity("Elizabeth Dinevski", "colleague"),
+        ExpectedEntity("Brian Cohn Welke", "colleague", role="Principal ML Solutions Architect", org="phData"),
+        ExpectedEntity("Murray Webb", "colleague", org="phData"),
+        ExpectedEntity("Brandon Veber", "colleague", org="phData"),
+        ExpectedEntity("Andrew Evans", "colleague", org="phData"),
+        ExpectedEntity("Dominick Rocco", "colleague", org="phData"),
+        ExpectedEntity("Garrett Springer", "colleague", org="phData"),
+        ExpectedEntity("Eric Carpenter", "colleague", org="phData"),
+        ExpectedEntity("Elizabeth Dinevski", "colleague", org="phData"),
     ],
     risks=[
         ExpectedRisk("$12M in pipeline vanished from Q1 with $9M appearing in Q3", "high"),
@@ -459,21 +488,21 @@ scheduled with Grant, Omar, and Gary.
         ExpectedRisk("Nikke is leaving the organization and needs to be backfilled at Chick-fil-A", "medium"),
     ],
     opportunities=[
-        ExpectedOpportunity("Norwegian Cruise Lines $700K opportunity was pitched successfully", "expansion"),
-        ExpectedOpportunity("Stride is the largest opportunity at $5M and could close immediately", "expansion"),
+        ExpectedOpportunity("Norwegian Cruise Lines $700K opportunity pitched successfully", "expansion"),
+        ExpectedOpportunity("Stride largest opportunity at $5M could close immediately", "expansion"),
         ExpectedOpportunity("Cook Unity kicked off with potential downstream engagements", "expansion"),
         ExpectedOpportunity("Digital Lock requesting direct engagement training", "expansion"),
         ExpectedOpportunity("Delta meeting planned for May in Atlanta with Todd", "expansion"),
-        ExpectedOpportunity("Agentic delivery framework reduces talk-to-data projects from 6-8 weeks to 4 weeks with fixed-bid pricing", "workflow"),
+        ExpectedOpportunity("Agentic delivery framework reduces talk-to-data projects from 6-8 weeks to 4 weeks", "workflow"),
     ],
     tasks=[
-        ExpectedTask("Murray flying to Minneapolis Monday for big AWS review with Brian", "Murray"),
-        ExpectedTask("Garrett designated as ML practice point person for Snowflake product roadmap", "Garrett"),
-        ExpectedTask("Schedule marketing strategy meeting with Grant, Omar, and Gary"),
-        ExpectedTask("Connect with Laura Martinelli, Snowflake partner solutions engineer"),
-        ExpectedTask("George to kick off Leonard engagement next week", "George"),
-        ExpectedTask("Identify a Latium MLE for Precisely starting next week"),
-        ExpectedTask("Andrew seeking volunteers to shadow pipeline analysis work", "Andrew"),
+        ExpectedTask("Fly to Minneapolis Monday for big AWS review with Brian", "Murray", due_hint="Monday", commitment="hard"),
+        ExpectedTask("Designated as ML practice point person for Snowflake product roadmap", "Garrett", commitment="hard"),
+        ExpectedTask("Schedule marketing strategy meeting with Grant, Omar, and Gary", commitment="soft"),
+        ExpectedTask("Connect with Laura Martinelli, Snowflake partner solutions engineer", commitment="soft"),
+        ExpectedTask("Kick off Leonard engagement next week", "George", due_hint="next week", commitment="hard"),
+        ExpectedTask("Identify a Latium MLE for Precisely", due_hint="next week", commitment="hard"),
+        ExpectedTask("Seeking volunteers to shadow pipeline analysis work", "Andrew", commitment="soft"),
     ],
     participants=[
         {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},

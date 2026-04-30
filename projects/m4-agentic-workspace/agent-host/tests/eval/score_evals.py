@@ -1,21 +1,24 @@
 """M4 eval LLM-judge scorer.
 
 Loads raw ingest responses saved by run_evals.py and scores them with the
-LLM-as-judge without re-running the expensive ingest pipeline.
+production two-pass judge (judge.py -> judge_core.py) without re-running the
+expensive ingest pipeline.
 
 Expects {results_dir}/{case_id}.json files written by run_evals.py.
 Ground-truth labels are sourced from golden_evals.ALL_CASES.
 
-Rubric (per category, 0.0–1.0 each):
-  completeness  Did the agent find all expected signals?
-  faithfulness  Are descriptions accurate to the source content?
-  precision     Are returned items grounded (not hallucinated)?
-  schema        Correct enum values (severity / type / relationship)?
+Rubric (per category, 0.0-1.0 each):
+  faithfulness       Are descriptions accurate to the source content?
+  precision          Are returned items grounded (not hallucinated)?
+  reasoning_quality  Does extractor chain-of-thought support conclusions?
+  schema             Correct enum values (severity / type / relationship)?
+  citation_quality   Do evidence quotes match the source text?
+  completeness       Did the agent find all expected signals? (eval-only, needs ground truth)
 
 Usage:
     cd agent-host
     uv run python tests/eval/score_evals.py
-    uv run python tests/eval/score_evals.py --case silver-meeting-001
+    uv run python tests/eval/score_evals.py --case polaris-sync-2026-04-17
     uv run python tests/eval/score_evals.py --judge-model qwen3:14b --verbose
     uv run python tests/eval/score_evals.py --results-dir /tmp/eval-results
 """
@@ -28,7 +31,7 @@ import json
 import sys
 from pathlib import Path
 
-from eval_judge import JudgeCaseResult, init_tracer, judge_case
+from judge_evals import JudgeCaseResult, judge_case
 from golden_evals import ALL_CASES
 
 
@@ -44,25 +47,25 @@ def _print_judge_detail(jr: JudgeCaseResult) -> None:
     if jr.error:
         print(f"\n  JUDGE ERROR: {jr.error}")
         return
-    print(f"\n  {'─' * 60}")
+    print(f"\n  {'─' * 70}")
     print(f"  JUDGE SCORES  (macro={jr.macro_score:.2f})")
-    print(f"  {'─' * 60}")
-    for label, judg in [
-        ("entities", jr.entities),
-        ("risks", jr.risks),
-        ("opportunities", jr.opportunities),
-        ("tasks", jr.tasks),
-    ]:
+    print(f"  {'─' * 70}")
+    for label in ["entities", "risks", "opportunities", "tasks"]:
+        score = getattr(jr, label)
+        if score is None:
+            print(f"  {label.upper():15s} (not scored)")
+            continue
         print(
             f"  {label.upper():15s} "
-            f"completeness={judg.completeness:.2f}  "
-            f"faithfulness={judg.faithfulness:.2f}  "
-            f"precision={judg.precision:.2f}  "
-            f"schema={judg.schema_score:.2f}  "
-            f"→ {judg.mean:.2f}"
+            f"faith={score.faithfulness:.2f}  "
+            f"prec={score.precision:.2f}  "
+            f"reason={score.reasoning_quality:.2f}  "
+            f"schema={score.schema_score:.2f}  "
+            f"cite={score.citation_quality:.2f}  "
+            f"-> {score.mean:.2f}"
         )
-        if judg.reasoning:
-            for line in judg.reasoning.splitlines():
+        if score.judge_reasoning:
+            for line in score.judge_reasoning.splitlines()[:5]:
                 print(f"    {line}")
 
 
@@ -90,12 +93,10 @@ def _print_summary(judge_results: list[JudgeCaseResult]) -> None:
             print(row + f"  {status}")
             continue
 
-        cat_scores = {
-            "entities": jr.entities.mean,
-            "risks": jr.risks.mean,
-            "opportunities": jr.opportunities.mean,
-            "tasks": jr.tasks.mean,
-        }
+        cat_scores = {}
+        for c in categories:
+            s = getattr(jr, c)
+            cat_scores[c] = s.mean if s is not None else 0.0
         macro = jr.macro_score
         macro_scores.append(macro)
         for c in categories:
@@ -141,30 +142,20 @@ async def _score_all(
             print(f"     Run: uv run python tests/eval/run_evals.py --case {case_id}")
             continue
 
-        print(f"  🧠 judging {case_id} …", flush=True)
+        print(f"  Judging {case_id} ...", flush=True)
         try:
             jr = await judge_case(
                 case_id=case_id,
-                returned=data,
-                expected_entities=case.entities,
-                expected_risks=case.risks,
-                expected_opportunities=case.opportunities,
-                expected_tasks=case.tasks,
+                case=case,
+                data=data,
                 model=judge_model,
                 base_url=judge_url,
             )
         except Exception as exc:  # noqa: BLE001
-            print(f"  ✗ judge failed — {exc}", flush=True)
-            jr = JudgeCaseResult(
-                case_id=case_id,
-                entities=None,  # type: ignore[arg-type]
-                risks=None,  # type: ignore[arg-type]
-                opportunities=None,  # type: ignore[arg-type]
-                tasks=None,  # type: ignore[arg-type]
-                error=str(exc),
-            )
+            print(f"  Judge failed: {exc}", flush=True)
+            jr = JudgeCaseResult(case_id=case_id, error=str(exc))
 
-        print(f"  ✓ {case_id}  macro={jr.macro_score:.2f}", flush=True)
+        print(f"  Done: {case_id}  macro={jr.macro_score:.2f}", flush=True)
         if verbose:
             _print_judge_detail(jr)
         judge_results.append(jr)
@@ -174,7 +165,7 @@ async def _score_all(
 
 def main() -> None:
     """Entry point for the M4 eval judge scorer."""
-    parser = argparse.ArgumentParser(description="Score saved M4 eval results with LLM judge")
+    parser = argparse.ArgumentParser(description="Score saved M4 eval results with production two-pass judge")
     _default_results = str(Path(__file__).parent / "results")
     parser.add_argument("--case", help="Score a single case by ID")
     parser.add_argument(
@@ -213,8 +204,6 @@ def main() -> None:
     print(f"\nScoring {len(case_ids)} case(s) from {results_dir.resolve()}")
     print(f"Judge model: {args.judge_model} @ {args.judge_url}")
     print()
-
-    init_tracer()  # export judge spans to Phoenix at localhost:4318
 
     judge_results = asyncio.run(
         _score_all(case_ids, results_dir, args.judge_model, args.judge_url, args.verbose)

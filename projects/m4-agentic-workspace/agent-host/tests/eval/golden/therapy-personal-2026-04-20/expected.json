@@ -1,0 +1,34 @@
+{
+  "meeting_date": "2026-04-20",
+  "scope": "private",
+  "entities": [],
+  "risks": [],
+  "opportunities": [],
+  "tasks": [],
+  "dropped": [
+    {
+      "text": "Zach",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "chorus retreat conflict",
+      "reason": "wrong_category"
+    },
+    {
+      "text": "complete expectations worksheet",
+      "reason": "wrong_category"
+    },
+    {
+      "text": "explore social anxiety strategies next week",
+      "reason": "wrong_category"
+    },
+    {
+      "text": "leave early if overwhelmed",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "therapist",
+      "reason": "stoplist_entity"
+    }
+  ]
+}

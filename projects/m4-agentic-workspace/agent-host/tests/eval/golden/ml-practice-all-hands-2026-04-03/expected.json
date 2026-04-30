@@ -1,0 +1,215 @@
+{
+  "meeting_date": "2026-04-03",
+  "entities": [
+    {
+      "name": "Sam",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Sam leading partnership overall"
+    },
+    {
+      "name": "Andrew",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Andrew running it from the practice side"
+    },
+    {
+      "name": "Murray",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Murray can help calculate, tag, and build proposal materials"
+    },
+    {
+      "name": "Corey",
+      "role": "AWS sales overlay",
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "similar to Corey's AWS role"
+    },
+    {
+      "name": "Cody",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Cody covering foundations; Greg demoing hands-on use cases"
+    },
+    {
+      "name": "Greg",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Cody covering foundations; Greg demoing hands-on use cases"
+    }
+  ],
+  "risks": [
+    {
+      "summary": "Q1 bookings came in light at ~$3M because several deals slipped into Q2",
+      "severity": "medium",
+      "project": null,
+      "evidence": "Q1 bookings: ~$3M (light — a few deals slipped into Q2)"
+    },
+    {
+      "summary": "Workday account navigating stakeholder churn and layoffs could destabilize engagement",
+      "severity": "medium",
+      "project": "workday",
+      "evidence": "Workday (navigating stakeholder churn/layoffs)"
+    },
+    {
+      "summary": "Enterprise Claude contracts lack implementation roadmap - window to fill gap is narrow",
+      "severity": "low",
+      "project": null,
+      "evidence": "Enterprises buying large Claude contracts with no implementation roadmap"
+    }
+  ],
+  "opportunities": [
+    {
+      "name": "Qubitt intelligence platform engagement via IML team",
+      "type": "new_logo",
+      "account": "Qubitt",
+      "value_hint": null,
+      "stage_hint": "exploration",
+      "evidence": "Potential new entry: Qubitt intelligence platform (IML team)"
+    },
+    {
+      "name": "Stride Learning renewal and continued expansion",
+      "type": "expansion",
+      "account": "Stride Learning",
+      "value_hint": null,
+      "stage_hint": "renewal",
+      "evidence": "Key renewals: Stride, Securion"
+    },
+    {
+      "name": "Securion renewal",
+      "type": "expansion",
+      "account": "Securion",
+      "value_hint": null,
+      "stage_hint": "renewal",
+      "evidence": "Key renewals: Stride, Securion"
+    },
+    {
+      "name": "Hands-on Claude Code lab delivery at Norwegian Cruise Lines",
+      "type": "expansion",
+      "account": "Norwegian Cruise Lines",
+      "value_hint": null,
+      "stage_hint": "scheduled",
+      "evidence": "Hands-on Claude Code lab at Norwegian Cruise Lines later this month"
+    },
+    {
+      "name": "AWS Premier tier achievement unlocking co-sell parity with Accenture/Deloitte/BCG",
+      "type": "workflow",
+      "account": null,
+      "value_hint": "$15M SEA commitment",
+      "stage_hint": "clearing",
+      "evidence": "phData likely achieving AWS Premier tier"
+    }
+  ],
+  "tasks": [
+    {
+      "action": "Develop personalized Claude Code hands-on labs for client delivery",
+      "owner": "Andrew",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": "Anthropic partnership rollout",
+      "evidence": "Andrew / Murray: develop personalized Claude Code hands-on labs for client delivery"
+    },
+    {
+      "action": "Recruit practice members willing to travel for lab sessions",
+      "owner": "Andrew",
+      "due_hint": null,
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "recruit practice members to travel"
+    },
+    {
+      "action": "Roll out Anthropic certification push across the practice",
+      "owner": "Andrew",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "roll out Anthropic certification push"
+    },
+    {
+      "action": "Tag AWS+AI-adjacent opportunities for Murray to calculate funding",
+      "owner": null,
+      "due_hint": null,
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "flag AWS+AI opportunities to Murray"
+    },
+    {
+      "action": "Share AWS Premier announcement via LinkedIn once cleared for external comms",
+      "owner": "Murray",
+      "due_hint": null,
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "share AWS Premier announcement via LinkedIn once cleared"
+    },
+    {
+      "action": "Run ML-group-specific AWS enablement session",
+      "owner": "Murray",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "run ML-group-specific AWS enablement session"
+    },
+    {
+      "action": "Join #tech-claude Slack channel",
+      "owner": null,
+      "due_hint": null,
+      "commitment": "implied",
+      "blocks": null,
+      "evidence": "join #tech-claude"
+    },
+    {
+      "action": "Contribute Claude Code skills to phData Forge",
+      "owner": null,
+      "due_hint": null,
+      "commitment": "implied",
+      "blocks": null,
+      "evidence": "contribute to phData Forge"
+    }
+  ],
+  "dropped": [
+    {
+      "text": "Q1 revenue: $6.84M vs. $6.75M target",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "21 opportunities won in Q1",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "easiest Premier-clearing SI in the last five years",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "Anthropic",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "AWS",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Claude Code",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "phData Forge",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Key renewals: Stride, Securion",
+      "reason": "duplicate"
+    }
+  ]
+}

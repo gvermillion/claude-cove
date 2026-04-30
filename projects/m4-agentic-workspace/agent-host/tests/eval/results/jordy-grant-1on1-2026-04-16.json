@@ -1,0 +1,12 @@
+{
+  "entities": [],
+  "risks": [],
+  "opportunities": [],
+  "tasks": [],
+  "dropped": [],
+  "synthesis": {
+    "meeting_summary": "### Brazil Employment Transition\n- phData converting Brazil contractors to CLT employees; ~30% monthly take-home decrease, offset by FGTS + benefits; net positive by year-end\n- Jordy not concerned; grateful for stability amid layoffs; sees long-term value; some team members complaining about taxes and health coverage\n\n### MetroTech Phase 2\n- 1.5 weeks remaining to deliver all features; SOW review completed with AI-generated requirements\u2192user stories mapping\n- Most items covered except problematic Phase 1 ingestions; Brandon discussing ingestion scope with Tyler\n\n### AI Tool Optimization\n- Grant sharing token optimization: Rust bash interceptor + pre/post tool hooks; millions of tokens saved monthly\n- Jordy experimenting with DSPy: built LiteLLM proxy for Snowflake rate limits; 8+ hour optimization runs due to sequential processing; missing intermediate logging\n\n### Workflow Challenges\n- Grant's evaluation framework: backend functional (13 judges), frontend demo mode broken; breaks prompts into modules mapped to failure modes\n- Grant's system: $60-70/full run (Sonnet 3.5); Jordy's MetroTech: $200+ due to large doc processing; missing prompt caching in Snowflake Claude\n\n### Next Steps\n- Fix frontend demo mode in evaluation framework (Grant)\n- Implement agentic plan cache layer with RAG component (Grant)\n- Brandon to resolve MetroTech Phase 1 ingestion scope with Tyler",
+    "citations": []
+  },
+  "p1_thinking": {}
+}

@@ -1,0 +1,168 @@
+{
+  "meeting_date": "2026-04-17",
+  "scope": "external",
+  "entities": [
+    {
+      "name": "Saichakravarthy Annam",
+      "role": null,
+      "org": "CrowdStrike",
+      "relationship": "client",
+      "aliases": ["Chakra"],
+      "evidence": "Chakra completed 20\u219240 metrics expansion, adding 17 digital metrics definitions"
+    },
+    {
+      "name": "Abby Liu",
+      "role": null,
+      "org": "CrowdStrike",
+      "relationship": "client",
+      "aliases": [],
+      "evidence": "Abby to run comparisons between new logo vs expansion metrics"
+    },
+    {
+      "name": "Gabriel Viana",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Gabriel deployed new semantic model with S1 pipe metrics"
+    },
+    {
+      "name": "Maria Schumacher",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Participants: Grant Vermillion, Maria Schumacher, Gabriel Viana, Stephanie Ortgies (phData)"
+    },
+    {
+      "name": "Stephanie Ortgies",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Participants: Grant Vermillion, Maria Schumacher, Gabriel Viana, Stephanie Ortgies (phData)"
+    }
+  ],
+  "risks": [
+    {
+      "summary": "Chakra must grant phData developer role permissions before going on PTO",
+      "severity": "high",
+      "project": "polaris",
+      "evidence": "Chakra grant permissions to phData developer role; Gabriel validate access via test query"
+    },
+    {
+      "summary": "S1 pipe expansion metric not yet in production dataset",
+      "severity": "medium",
+      "project": "polaris",
+      "evidence": "all except S1 pipe expansion \u2014 not in prod dataset yet"
+    },
+    {
+      "summary": "End-to-end access via test query not yet validated",
+      "severity": "medium",
+      "project": "polaris",
+      "evidence": "Gabriel to validate end-to-end access via test query"
+    }
+  ],
+  "opportunities": [
+    {
+      "name": "Embed Agent Management Platform into Drive Nexus",
+      "type": "expansion",
+      "account": "CrowdStrike",
+      "value_hint": null,
+      "stage_hint": "discovery",
+      "evidence": "being ported to AWS Agent Forge; embeddable in Drive Nexus"
+    },
+    {
+      "name": "Port Agent Management Platform to AWS Agent Forge",
+      "type": "lateral",
+      "account": "CrowdStrike",
+      "value_hint": null,
+      "stage_hint": "in_progress",
+      "evidence": "being ported to AWS Agent Forge"
+    },
+    {
+      "name": "Prometheus/DataDog telemetry integration",
+      "type": "lateral",
+      "account": "CrowdStrike",
+      "value_hint": null,
+      "stage_hint": "available",
+      "evidence": "Telemetry stored in Snowflake (Prometheus/DataDog compatible)"
+    }
+  ],
+  "tasks": [
+    {
+      "action": "Grant permissions to phData team before PTO",
+      "owner": "Chakra",
+      "due_hint": "before PTO",
+      "commitment": "hard",
+      "blocks": "Gabriel end-to-end access validation",
+      "evidence": "Chakra to grant permissions to phData team before PTO"
+    },
+    {
+      "action": "Validate end-to-end access via test query",
+      "owner": "Gabriel",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Gabriel to validate end-to-end access via test query"
+    },
+    {
+      "action": "Complete Drive Nexus vs Cortex Analyst evaluation",
+      "owner": null,
+      "due_hint": "next week",
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Complete Drive Nexus vs Cortex Analyst evaluation next week"
+    },
+    {
+      "action": "Schedule deep-dive on evaluation methodology when Chakra returns",
+      "owner": null,
+      "due_hint": "when Chakra returns",
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "Schedule deep-dive on evaluation methodology when Chakra returns"
+    },
+    {
+      "action": "Deploy Gabriel's updates to dev Slack for testing",
+      "owner": "Gabriel",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Deploy Gabriel's updates to dev Slack for testing"
+    },
+    {
+      "action": "Run comparisons between new logo vs expansion metrics",
+      "owner": "Abby",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Abby to run comparisons between new logo vs expansion metrics"
+    }
+  ],
+  "dropped": [
+    {
+      "text": "Snowflake",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "AWS",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Cortex Analyst",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Drive Nexus",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "weighted averages instead of sums for mathematical accuracy",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "17 digital metrics definitions added",
+      "reason": "fact_not_task"
+    }
+  ]
+}

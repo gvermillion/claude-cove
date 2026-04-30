@@ -1,0 +1,120 @@
+{
+  "entities": [],
+  "risks": [],
+  "opportunities": [
+    {
+      "name": "ERP/CRM consolidation to scale",
+      "type": "expansion",
+      "account": null,
+      "value_hint": "32 ERPs\u21921, 30 CRMs\u21921",
+      "stage_hint": "strategic",
+      "evidence": "new CEO shifting to \"connect to scale\": 32 ERPs\u21921, 30 CRMs\u21921"
+    }
+  ],
+  "tasks": [],
+  "dropped": [],
+  "synthesis": {
+    "meeting_summary": "### Trimble Overview\n- 49-year-old company, heavy acquisitions; new CEO (5yr) shifting to \"connect to scale\": 32 ERPs\u21921, 30 CRMs\u21921\n- Three divisions: Transportation & Logistics (15%), Field Systems (40%, hardware OG), AECO (45%, construction software, growth vehicle)\n- Strong AWS/Snowflake partnership (embedded teams 3-4x/week)\n\n### Data Challenges\n- Shadow data depts using every tool; Field Systems doesn't know where data is created, owned, or consumed\n- Previous governance failed due to lack of funding; using Purview (inadequate for non-Microsoft shop)\n\n### Sergio's Role\n- 7 months at Trimble (prev: Salesforce, Adidas); reports to Chris Buckler under new CIO Chris B\n- Leads enterprise data management: metadata, master data quality, data engineering, architecture\n- Data Enabling Decision Group (bi-weekly): CIO, CISO, Head of Legal, Chief of Staff, Finance Transformation \u2014 empowered to fund\n\n### AI Initiatives\n- Two AI teams: Internal AI (Avia T. Ion, code/process) and Agentic AI (Tyler Miller, Netherlands, customer-facing marketplace)\n- Pressure to ship by Dimensions conference (Las Vegas, summer); switching Azure\u2192AWS for new AI products\n- No governance/security process for AI product evaluation yet\n\n### Field Systems Discovery Opportunity\n- Need unbiased landscape assessment before integration; funding challenge may need AWS/Snowflake partnership\n- James (New Zealand) key stakeholder; goal: map data ecosystem, identify Snowflake migration value\n\n### Next Steps\n- MSA/NDA execution to open deeper conversations\n- Sergio to share RFP for Field Systems discovery work\n- Include Joe Mastroianni in future discussions\n- Share recording with James and Joe\n- Potential: Vincent from phData as guest speaker on AI strategy",
+    "citations": [
+      {
+        "category": "entity",
+        "signal": "Trimble is a 49-year-old company with a heavy acquisition strategy",
+        "evidence": "Trimble is a 49-year-old company with a heavy acquisition strategy",
+        "source_line": 1
+      },
+      {
+        "category": "entity",
+        "signal": "Trimble has three divisions: Transportation and Logistics (15%), Field Systems (40%), and AECO construction software (45%)",
+        "evidence": "Trimble has three divisions: Transportation and Logistics (15%), Field Systems (40%), and AECO construction software (45%)",
+        "source_line": 6
+      },
+      {
+        "category": "entity",
+        "signal": "Trimble has a strong AWS and Snowflake partnership",
+        "evidence": "Trimble has a strong AWS and Snowflake partnership",
+        "source_line": 8
+      },
+      {
+        "category": "entity",
+        "signal": "Sergio Valenzuela is the data counterpart on the Trimble side",
+        "evidence": "Sergio Valenzuela is the data counterpart on the Trimble side",
+        "source_line": 11
+      },
+      {
+        "category": "entity",
+        "signal": "Trimble has two separate AI teams: Internal AI and Agentic AI",
+        "evidence": "Trimble has two separate AI teams: Internal AI (Avia T. Ion) focusing on code analysis and process improvement, and Agentic AI (Tyler Miller, based in Netherlands) building customer-facing products for an AI Studio marketplace",
+        "source_line": 26
+      },
+      {
+        "category": "risk",
+        "signal": "Shadow data departments causing data ownership issues",
+        "evidence": "Field Systems does not know where data is created, who owns it, or how it is consumed",
+        "source_line": 22
+      },
+      {
+        "category": "risk",
+        "signal": "Inadequate data governance tools",
+        "evidence": "They are currently using Purview, which is inadequate for a non-Microsoft shop",
+        "source_line": 24
+      },
+      {
+        "category": "risk",
+        "signal": "Lack of AI product governance and security processes",
+        "evidence": "There is no governance or security process for AI product evaluation yet",
+        "source_line": 31
+      },
+      {
+        "category": "risk",
+        "signal": "Potential friction between AI teams and consultants",
+        "evidence": "There is potential friction between the Agentic AI team and external consultants due to loyalty to internal teams",
+        "source_line": 38
+      },
+      {
+        "category": "risk",
+        "signal": "Funding challenges for Field Systems discovery work",
+        "evidence": "Funding for the Field Systems discovery work will be challenging",
+        "source_line": 39
+      },
+      {
+        "category": "opportunity",
+        "signal": "ERP/CRM consolidation to scale",
+        "evidence": "Trimble is currently consolidating from 32 ERPs to 1 and from 30 CRMs to 1.",
+        "source_line": 3
+      },
+      {
+        "category": "task",
+        "signal": "MSA/NDA execution to open deeper conversations",
+        "evidence": "MSA/NDA execution to open deeper conversations",
+        "source_line": 45
+      },
+      {
+        "category": "task",
+        "signal": "Sergio to share RFP for Field Systems discovery work",
+        "evidence": "Sergio to share RFP for Field Systems discovery work",
+        "source_line": 46
+      },
+      {
+        "category": "task",
+        "signal": "Include Joe Mastroianni in future discussions",
+        "evidence": "Include Joe Mastroianni in future discussions",
+        "source_line": 47
+      },
+      {
+        "category": "task",
+        "signal": "Share meeting recording with James and Joe",
+        "evidence": "Share meeting recording with James and Joe",
+        "source_line": 48
+      },
+      {
+        "category": "task",
+        "signal": "Potential guest speaker opportunity",
+        "evidence": "Potential guest speaker opportunity: Vincent from phData AI strategy",
+        "source_line": 49
+      }
+    ]
+  },
+  "p1_thinking": {
+    "opportunities": "Okay, let's tackle this query. The user wants me to list every business opportunity, unmet need, or expansion possibility mentioned in the meeting transcript, categorize them as expansion, workflow, or lateral, and provide a short verbatim quote as evidence.\n\nFirst, I need to go through the transcript carefully. Let me start by breaking down each section.\n\nThe Trimble Overview mentions they're shifting to \"connect to scale\" with ERP and CRM consolidation. That sounds like an expansion opportunity because they're integrating systems, which could lead to new markets or services. The evidence here would be the part about consolidating ERPs and CRMs.\n\nNext, the Data Challenges section talks about shadow data departments and lack of governance. This seems like a workflow issue because it's about internal processes and data management. The evidence is the mention of shadow data departments using every tool.\n\nSergio's Role mentions leading enterprise data management and the Data Enabling Decision Group. This might be a lateral opportunity since it's about internal team structure and governance. The evidence could be the formation of the group with cross-functional leaders.\n\nAI Initiatives discuss two AI teams and pressure to ship by Dimensions conference. This is an expansion possibility as they're developing new products. The evidence is the switch to AWS for AI products.\n\nField Systems Discovery Opportunity mentions needing an unbiased assessment and potential AWS/Snowflake partnership. This is an expansion or workflow? It's about a specific project, maybe expansion since it's a new initiative. The evidence is the need for a landscape assessment.\n\nNext Steps include MSA/NDA execution, RFP sharing, and inviting Joe Mastroianni. These are more like tasks, so they shouldn't be listed as opportunities. The potential guest speaker from phData is a lateral opportunity, maybe for collaboration or knowledge sharing. The evidence is the mention of Vincent from phData.\n\nWait, the user said not to include staffing/ops actions. The next steps about MSA/NDA and RFP are tasks, so they're excluded. The AI governance is mentioned but not yet in place, so that's a gap, maybe a lateral opportunity? The evidence is the lack of governance/security process.\n\nLet me check each point again. The expansion opportunities are the ERP/CRM consolidation, AI product development, and Field Systems discovery. Workflow is the data governance issues. Lateral could be the AI governance process and the potential collaboration with phData.\n\nWait, the user specified to categorize as expansion, workflow, or lateral. Expansion is about new markets or products. Workflow is internal process improvements. Lateral could be partnerships or collaborations. The AI governance is a gap, but maybe a lateral opportunity if they're looking to establish it. The phData guest speaker is a lateral opportunity for knowledge sharing.\n\nI need to make sure each opportunity has a short quote. Let me compile the list now."
+  }
+}
