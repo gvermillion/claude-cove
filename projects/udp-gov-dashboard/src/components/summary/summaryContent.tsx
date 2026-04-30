@@ -32,6 +32,7 @@ import {
   C,
   colorStyles,
 } from '../primitives';
+import { EntitlementsDiagram } from '../diagrams';
 import type { Mode } from '../ModeToggle';
 
 /* ------------------------------------------------------------------ */
@@ -249,25 +250,21 @@ export const SOLUTION_PATTERNS: {
   },
 ];
 
-export const ROADMAP_EXEC: { section: string; label: string; tabId: string }[] =
-  [
-    { section: '§1', label: 'Summary', tabId: 'summary' },
-    { section: '§2', label: 'Architecture', tabId: 'architecture' },
-    { section: '§3', label: 'Security', tabId: 'security' },
-    { section: '§4', label: 'Roadmap', tabId: 'roadmap' },
-  ];
+export const ROADMAP_EXEC: { label: string; tabId: string }[] = [
+  { label: 'Summary', tabId: 'summary' },
+  { label: 'Architecture', tabId: 'architecture' },
+  { label: 'Security', tabId: 'security' },
+  { label: 'Roadmap', tabId: 'roadmap' },
+];
 
-export const ROADMAP_ENG: { section: string; label: string; tabId: string }[] =
-  [
-    { section: '§1', label: 'Overview', tabId: 'overview' },
-    { section: '§2', label: 'Developer Sandbox', tabId: 'sandbox' },
-    { section: '§3', label: 'Schema Design', tabId: 'schema' },
-    { section: '§4', label: 'Tag Taxonomy', tabId: 'taxonomy' },
-    { section: '§5', label: 'Policy Logic', tabId: 'policy' },
-    { section: '§6', label: 'Hardening', tabId: 'enforcement' },
-    { section: '§7', label: 'Extensibility', tabId: 'extensibility' },
-    { section: '§8', label: 'Roadmap & Ops', tabId: 'ops' },
-  ];
+export const ROADMAP_ENG: { label: string; tabId: string }[] = [
+  { label: 'Overview', tabId: 'overview' },
+  { label: 'Developer Experience', tabId: 'sandbox' },
+  { label: 'Implementation', tabId: 'governance' },
+  { label: 'Hardening', tabId: 'enforcement' },
+  { label: 'Extensibility', tabId: 'extensibility' },
+  { label: 'Roadmap & Ops', tabId: 'ops' },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
@@ -279,7 +276,7 @@ export const ROADMAP_ENG: { section: string; label: string; tabId: string }[] =
  */
 export const HeroBlock: React.FC<ModeProps> = ({ mode = 'exec' }) => {
   const badgeText =
-    mode === 'exec' ? 'Executive Summary' : 'Section 1 · Architecture Overview';
+    mode === 'exec' ? 'Executive Summary' : 'Engineering Overview';
   return (
     <div className="bg-gradient-to-br from-[#1a1a1a] to-[#050505] border border-white/15 rounded-xl p-10 relative overflow-hidden">
       <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
@@ -519,6 +516,70 @@ export const CoreVulnerabilities: React.FC = () => {
 };
 
 /**
+ * Flat 2×2 card grid of core vulnerabilities — replaces the interactive
+ * sidebar version on the eng overview. All four items are visible at once.
+ */
+export const VulnerabilityGrid: React.FC = () => (
+  <div className="space-y-4">
+    <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
+      Core Risks
+      <span className="text-gray-500 font-normal text-xs ml-2 normal-case tracking-normal">
+        — why this architecture exists
+      </span>
+    </h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {VULN_ITEMS.map((v) => {
+        const s = colorStyles[v.color];
+        return (
+          <div
+            key={v.label}
+            className={`rounded-xl border ${s.border} ${s.bg} px-5 py-4 space-y-2`}
+          >
+            <div className="flex items-center gap-2">
+              <v.icon size={14} className={s.accent} />
+              <span className={`text-xs font-bold uppercase tracking-wide ${s.accent}`}>
+                {v.label}
+              </span>
+            </div>
+            <div className="text-[11px] text-gray-400 leading-relaxed">
+              {v.content}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+/**
+ * Topic navigation grid — replaces DocumentRoadmap on the eng overview.
+ * No section numbers, just clickable topic cards.
+ */
+export const TopicNav: React.FC<{ onNavigate?: (tabId: string) => void }> = ({
+  onNavigate,
+}) => (
+  <div className="bg-[#111] border border-white/20 rounded-xl px-6 py-5">
+    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">
+      What&apos;s Covered
+      <span className="text-gray-600 font-normal normal-case tracking-normal ml-2">
+        — click to navigate
+      </span>
+    </p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {ROADMAP_ENG.slice(1).map(({ label, tabId }) => (
+        <button
+          key={tabId}
+          onClick={() => onNavigate?.(tabId)}
+          className="text-left rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 transition-all duration-200 hover:bg-white/[0.08] hover:border-white/20 cursor-pointer"
+        >
+          <span className="text-xs font-semibold text-gray-300">{label}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+/**
  * Canonical PDP/PEP visualization with the animated arrow + the two
  * Maximising-UDP-Investment / Multi-Platform-Vendor-Neutrality info cards.
  * Identical content across modes.
@@ -528,7 +589,16 @@ export const SolutionPatternViz: React.FC = () => (
     <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
       The Solution Pattern
       <span className="text-gray-500 font-normal text-xs ml-2 normal-case tracking-normal">
-        — NIST SP 800-162 PDP / PEP segregation
+        —{' '}
+        <a
+          href="https://csrc.nist.gov/pubs/sp/800/162/upd2/final"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-emerald-500/80 hover:text-emerald-400 underline decoration-emerald-500/30 hover:decoration-emerald-400/60 transition-colors"
+        >
+          NIST SP 800-162
+        </a>
+        {' '}PDP / PEP segregation
       </span>
     </h3>
 
@@ -540,50 +610,7 @@ export const SolutionPatternViz: React.FC = () => (
       <C>ENTITLEMENTS</C>, not a redesign of access logic.
     </p>
 
-    <div className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-4">
-      <div className="rounded-xl border border-emerald-600/40 bg-emerald-600/10 px-6 py-4">
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-emerald-400 text-xs font-bold uppercase tracking-wide">
-            Policy Decision Point (PDP)
-          </p>
-          <span className="text-[9px] text-emerald-600 font-mono border border-emerald-600/30 rounded px-1.5 py-0.5">
-            NIST SP 800-162
-          </span>
-        </div>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          <C>ENTITLEMENTS</C> table — one canonical source of truth, fed by Okta
-          + Salesforce + manual overrides. All enforcement points read from here.
-        </p>
-      </div>
-
-      <div className="flex justify-center py-1 text-emerald-500">
-        <svg width="16" height="24" viewBox="0 0 16 24" fill="none">
-          <path
-            d="M8 0v20m0 0l-4-4m4 4l4-4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <animate
-              attributeName="stroke"
-              values="#10b981;#6ee7b7;#10b981"
-              dur="1.5s"
-              repeatCount="indefinite"
-            />
-          </path>
-        </svg>
-      </div>
-
-      <p className="text-xs text-gray-400 text-center">
-        Feeds <span className="text-blue-400 font-semibold">Snowflake</span>,{' '}
-        <span className="text-amber-400 font-semibold">AWS S3</span>,{' '}
-        <span className="text-red-400 font-semibold">Bedrock</span>, and any
-        future enforcement point
-      </p>
-
-      <p className="text-[10px] text-gray-500 text-center italic">
-        Same policy logic — multiple enforcement points — zero duplication
-      </p>
-    </div>
+    <EntitlementsDiagram mode="eng" />
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <InfoCard title="Maximising UDP Investment" icon={Zap} accent="emerald">
@@ -684,14 +711,13 @@ export const DocumentRoadmap: React.FC<NavigableModeProps> = ({
         </span>
       </p>
       <div className="flex flex-wrap gap-2">
-        {items.map(({ section, label, tabId }) => (
+        {items.map(({ label, tabId }) => (
           <button
-            key={section}
+            key={tabId}
             onClick={() => onNavigate?.(tabId)}
             className="inline-flex items-center gap-2 text-[11px] bg-white/[0.06] border border-white/20 rounded-lg px-3 py-1.5 transition-all duration-200 hover:bg-white/10 hover:border-white/20 cursor-pointer"
           >
-            <span className="text-red-600 font-black">{section}</span>
-            <span className="text-gray-400">{label}</span>
+            <span className="text-gray-300">{label}</span>
           </button>
         ))}
       </div>

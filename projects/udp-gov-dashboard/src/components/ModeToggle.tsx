@@ -48,11 +48,12 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
   }
 
   return (
-    <div
-      role="group"
-      aria-label="Audience mode"
-      className="mx-3 mb-3 flex h-9 items-center rounded-lg border border-white/15 bg-[#0a0a0a] p-1"
-    >
+    <div className="mx-3 mb-3 space-y-1.5">
+      <div
+        role="group"
+        aria-label="Audience mode"
+        className="flex h-9 items-center rounded-lg border border-white/15 bg-[#0a0a0a] p-1"
+      >
       <button
         onClick={() => onChange('exec')}
         aria-pressed={isExec}
@@ -77,6 +78,12 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         <Wrench size={12} />
         Eng
       </button>
+      </div>
+      <p className="text-[9px] text-gray-500 text-center leading-tight">
+        {isExec
+          ? 'Strategic overview for leadership'
+          : 'Technical detail for engineers'}
+      </p>
     </div>
   );
 };

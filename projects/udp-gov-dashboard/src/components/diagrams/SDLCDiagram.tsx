@@ -50,17 +50,17 @@ const SDLC_DATA: Record<SdlcKey, React.ReactNode> = {
         experimenting.
       </p>
       <span style={{ ...TAG_BASE, background: '#0a0f1a', color: '#60a5fa', border: '1px solid #1e3a8a55' }}>
-        Lane A · Dev only
+        Lane A · Dev / non-prod only
       </span>
     </>
   ),
   cortex: (
     <>
-      <p style={DETAIL_NAME}>Cortex Copilot — Schema Router</p>
+      <p style={DETAIL_NAME}>Cortex Code — Schema Router</p>
       <p style={DETAIL_TEXT}>
-        When it's time to share, Cortex Copilot analyzes the table's data and identifies the correct governed
-        schema based on security grain. Not a security gate — a routing guide that helps the developer find
-        where the table belongs.
+        Developer names the object they want to share. Cortex Code scans columns, detects the data domain and
+        governance grain, runs preflight checks, and recommends the correct governed schema. Not a security
+        gate — a routing guide.
       </p>
       <span style={{ ...TAG_BASE, background: '#0a1a0a', color: '#4ade80', border: '1px solid #14532d55' }}>
         AI-assisted routing
@@ -71,9 +71,9 @@ const SDLC_DATA: Record<SdlcKey, React.ReactNode> = {
     <>
       <p style={DETAIL_NAME}>Write to Schema</p>
       <p style={DETAIL_TEXT}>
-        Developer writes the table into the governed schema in dev. The table lands in the correct location as
-        identified by Cortex Copilot. At this point dbt picks it up — the posthook fires and adds governance
-        metadata (tags) to the table automatically.
+        Developer writes the table into the governed schema in dev. dbt picks it up — the post-hook fires and
+        adds governance tags automatically. This is the manual entrypoint for iteration in non-production
+        environments.
       </p>
       <span style={{ ...TAG_BASE, background: '#0f1a1a', color: '#22d3ee', border: '1px solid #0e749055' }}>
         dbt adds metadata on landing
@@ -84,12 +84,12 @@ const SDLC_DATA: Record<SdlcKey, React.ReactNode> = {
     <>
       <p style={DETAIL_NAME}>CI/CD Pipeline</p>
       <p style={DETAIL_TEXT}>
-        The canonical path. Developer writes dbt models in the pipeline repo. Schema placement, tag
-        application, and promotion are all codified, version-controlled, and repeatable. This is the
-        production-grade entrypoint.
+        The <strong style={{ color: '#fff' }}>required path for production</strong>. Developer writes dbt
+        models in the pipeline repo. Schema placement, tag application, and promotion are codified,
+        version-controlled, and repeatable. Manual writes cannot reach production — only this lane can.
       </p>
       <span style={{ ...TAG_BASE, background: '#1a0f1a', color: '#a78bfa', border: '1px solid #5b21b655' }}>
-        Lane B · Canonical
+        Lane B · Required for production
       </span>
     </>
   ),
@@ -98,7 +98,8 @@ const SDLC_DATA: Record<SdlcKey, React.ReactNode> = {
       <p style={DETAIL_NAME}>Promote — Schema Migration</p>
       <p style={DETAIL_TEXT}>
         CI/CD pipeline promotes the asset through environments (dev → staging → prod). Schema tests validate
-        correct placement. dbt post-hooks apply tags automatically at each stage.
+        correct placement. dbt post-hooks apply tags automatically at each stage. Only assets that pass all
+        gates reach production.
       </p>
       <span style={{ ...TAG_BASE, background: '#1a0f1a', color: '#a78bfa', border: '1px solid #5b21b655' }}>
         Pipeline stage
@@ -150,7 +151,7 @@ export function SDLCDiagram() {
         <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ccc' }}>
           Developer SDLC — Two Paths to Governance
         </span>
-        <span style={{ fontSize: '0.65rem', color: '#888' }}>Dual entrypoints converging on governed schema</span>
+        <span style={{ fontSize: '0.65rem', color: '#888' }}>Lane A for dev iteration · Lane B required for production</span>
       </div>
 
       {/* Body */}
@@ -170,9 +171,9 @@ export function SDLCDiagram() {
             style={{ width: '100%', height: 'auto', maxHeight: 460 }}
           >
             <defs>
-              <path id="sp-a" d="M 108,57 L 370,57 C 385,57 395,78 395,100" fill="none" />
-              <path id="sp-b" d="M 108,197 L 250,197 C 320,197 395,158 395,140" fill="none" />
-              <path id="sp-post" d="M 395,140 L 395,210 L 455,210" fill="none" />
+              <path id="sp-a" d="M 108,57 L 370,57 C 390,57 395,80 395,100" fill="none" />
+              <path id="sp-b" d="M 108,197 L 250,197 C 320,197 395,165 395,150" fill="none" />
+              <path id="sp-post" d="M 395,150 L 395,210 L 455,210" fill="none" />
               <filter id="gl2">
                 <feGaussianBlur stdDeviation="2.5" result="g" />
                 <feMerge>
@@ -184,7 +185,7 @@ export function SDLCDiagram() {
 
             {/* Lane labels and backgrounds */}
             <text x="12" y="20" fill="#888" fontSize="7" fontWeight="700" letterSpacing=".1em">
-              LANE A · DEV ONLY (AD-HOC)
+              LANE A · MANUAL PROMOTION (DEV / NON-PROD)
             </text>
             <rect
               x="7" y="30" width="400" height="55" rx="8"
@@ -193,7 +194,7 @@ export function SDLCDiagram() {
             />
 
             <text x="12" y="160" fill="#888" fontSize="7" fontWeight="700" letterSpacing=".1em">
-              LANE B · CANONICAL (CI/CD)
+              LANE B · CI/CD PIPELINE (REQUIRED FOR PRODUCTION)
             </text>
             <rect
               x="7" y="170" width="370" height="55" rx="8"
@@ -205,15 +206,15 @@ export function SDLCDiagram() {
             <line x1="108" y1="57" x2="155" y2="57" stroke="#60a5fa" strokeWidth="1.5" strokeOpacity=".8" />
             <line x1="238" y1="57" x2="277" y2="57" stroke="#4ade80" strokeWidth="1.5" strokeOpacity=".8" />
             <line x1="348" y1="57" x2="370" y2="57" stroke="#fb923c" strokeWidth="1.5" strokeOpacity=".8" />
-            <path d="M 375,60 C 390,60 395,80 395,105" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeOpacity=".8" />
+            <path d="M 370,57 C 390,57 395,80 395,100" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeOpacity=".8" />
 
             {/* Lane B edges */}
             <line x1="108" y1="197" x2="165" y2="197" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".8" />
-            <path d="M 250,197 C 320,197 395,160 395,140" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".8" />
+            <path d="M 250,197 C 320,197 395,165 395,150" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeOpacity=".8" />
 
             {/* Post-merge edges */}
-            <line x1="395" y1="140" x2="395" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".85" />
-            <line x1="405" y1="210" x2="455" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".85" />
+            <line x1="395" y1="150" x2="395" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".85" />
+            <line x1="395" y1="210" x2="455" y2="210" stroke="#f87171" strokeWidth="1.5" strokeOpacity=".85" />
 
             {/* Animated pulses */}
             <circle r="3" fill="#60a5fa" filter="url(#gl2)">
@@ -245,7 +246,7 @@ export function SDLCDiagram() {
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('cortex')}>
               <rect x="155" y="35" width="84" height="44" rx="8" fill="#0f2a0f" stroke="#16a34a" strokeWidth="1.5" />
               <text x="197" y="50" textAnchor="middle" fill="#4ade80" fontSize="8" fontWeight="700">CORTEX</text>
-              <text x="197" y="60" textAnchor="middle" fill="#4ade80" fontSize="7">COPILOT</text>
+              <text x="197" y="60" textAnchor="middle" fill="#4ade80" fontSize="7">CODE</text>
               <text x="197" y="72" textAnchor="middle" fill="#bbb" fontSize="6">Find right schema</text>
             </g>
             <g style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered('write')}>

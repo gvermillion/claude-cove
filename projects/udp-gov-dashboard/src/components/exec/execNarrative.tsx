@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Globe,
   Zap,
-  ChevronRight,
   ArrowRight,
 } from 'lucide-react';
 import { C, colorStyles } from '../primitives';
@@ -174,66 +173,24 @@ export const ScalingHorizon: React.FC = () => (
         </div>
       ))}
     </div>
-  </div>
-);
 
-/* ------------------------------------------------------------------ */
-/*  Section 4 — Attack Vectors                                         */
-/* ------------------------------------------------------------------ */
-
-const ATTACK_VECTORS = [
-  {
-    icon: AlertOctagon,
-    title: 'Data Copies Lose Protection',
-    desc: 'When a pipeline materializes data into a new table, the access policy stays behind on the original. The copy is unprotected and nobody is notified.',
-    color: 'red' as const,
-  },
-  {
-    icon: Code,
-    title: 'Enforcement Depends on Discipline',
-    desc: 'Security only works if every developer remembers to attach the rule book to their query. A missed join silently returns unfiltered data — the query succeeds, just without protection.',
-    color: 'amber' as const,
-  },
-  {
-    icon: GitBranch,
-    title: 'Reshaping Data Strips the Rules',
-    desc: 'When data is aggregated to a different level, the columns that drove access rules may vanish. The policy technically still applies — it just filters on nothing.',
-    color: 'red' as const,
-  },
-  {
-    icon: Users,
-    title: 'Onboarding Takes Engineering Tickets',
-    desc: 'Every new user or role change requires a manual update to the access matrix. Data Engineering is in the loop for every personnel change — slow, error-prone, and doesn\'t scale.',
-    color: 'amber' as const,
-  },
-];
-
-export const AttackVectors: React.FC = () => (
-  <div className="space-y-4">
-    <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
-      Attack Vectors Any Solution Must Address
-    </h3>
-    <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
-      These aren't hypothetical risks. They're structural weaknesses in how
-      row-level security works across platforms today — and any governance
-      solution must close all four.
-    </p>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {ATTACK_VECTORS.map(({ icon: Icon, title, desc, color }) => {
-        const s = colorStyles[color];
-        return (
-          <div
-            key={title}
-            className={`rounded-xl border ${s.border} ${s.bg} px-5 py-4`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Icon size={14} className={s.accent} />
-              <p className={`text-xs font-bold ${s.accent}`}>{title}</p>
-            </div>
-            <p className="text-[11px] text-gray-400 leading-relaxed">{desc}</p>
+    <div className="mt-6 space-y-3">
+      <p className="text-xs font-bold text-white uppercase tracking-wide">
+        Structural Risks to Address
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {[
+          { icon: AlertOctagon, text: 'Data copies lose protection — policies stay on the original, copies ship ungoverned.' },
+          { icon: Code, text: 'Enforcement depends on discipline — a missed join silently returns unfiltered data.' },
+          { icon: GitBranch, text: 'Reshaping data strips the rules — aggregation removes the columns policies filter on.' },
+          { icon: Users, text: 'Onboarding takes engineering tickets — every personnel change requires manual access updates.' },
+        ].map(({ icon: Icon, text }) => (
+          <div key={text} className="flex gap-2 items-start">
+            <Icon size={12} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-gray-400 leading-relaxed">{text}</p>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   </div>
 );
@@ -293,7 +250,15 @@ export const NistPattern: React.FC = () => (
     <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
       The Answer: Separate Decisions from Enforcement
       <span className="text-gray-500 font-normal text-xs ml-2 normal-case tracking-normal">
-        — NIST SP 800-162
+        —{' '}
+        <a
+          href="https://csrc.nist.gov/pubs/sp/800/162/upd2/final"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-emerald-500/80 hover:text-emerald-400 underline decoration-emerald-500/30 hover:decoration-emerald-400/60 transition-colors"
+        >
+          NIST SP 800-162
+        </a>
       </span>
     </h3>
     <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
@@ -311,121 +276,99 @@ export const NistPattern: React.FC = () => (
       governance updates automatically. No tickets, no engineering intervention.
     </p>
 
-    {/* Compact PDP → PEP visual */}
-    <div className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-5">
-      {/* Source row */}
-      <div className="flex items-center justify-center gap-3 flex-wrap">
-        {['Okta', 'Salesforce', 'JIRA'].map((src) => (
-          <div
-            key={src}
-            className="rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2 text-xs text-gray-400 font-semibold"
-          >
-            {src}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex justify-center text-gray-600">
-        <ChevronRight size={16} className="rotate-90" />
-      </div>
-
-      {/* PDP */}
-      <div className="rounded-xl border-2 border-emerald-600/60 bg-emerald-600/10 px-6 py-4 text-center max-w-md mx-auto">
-        <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-1">
-          Policy Decision Point
-        </p>
-        <p className="text-emerald-300 text-sm font-black uppercase tracking-tight">
-          ENTITLEMENTS
-        </p>
-        <p className="text-[10px] text-gray-500 mt-1">
-          Single source of truth — who can see what, and why
-        </p>
-      </div>
-
-      <div className="flex justify-center text-emerald-500">
-        <svg width="16" height="24" viewBox="0 0 16 24" fill="none">
-          <path
-            d="M8 0v20m0 0l-4-4m4 4l4-4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <animate
-              attributeName="stroke"
-              values="#10b981;#6ee7b7;#10b981"
-              dur="1.5s"
-              repeatCount="indefinite"
-            />
-          </path>
-        </svg>
-      </div>
-
-      {/* PEP row */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          {
-            label: 'Snowflake',
-            sub: 'Row Access Policies',
-            border: 'border-blue-500/30',
-            bg: 'bg-blue-500/5',
-            color: 'text-blue-400',
-          },
-          {
-            label: 'AWS S3',
-            sub: 'Lake Formation',
-            border: 'border-amber-500/30',
-            bg: 'bg-amber-500/5',
-            color: 'text-amber-400',
-          },
-          {
-            label: 'Bedrock',
-            sub: 'AI Guardrails',
-            border: 'border-red-500/30',
-            bg: 'bg-red-500/5',
-            color: 'text-red-400',
-          },
-          {
-            label: 'Future PEP',
-            sub: 'Any platform',
-            border: 'border-white/15',
-            bg: 'bg-white/[0.03]',
-            color: 'text-gray-500',
-            dashed: true,
-          },
-        ].map(({ label, sub, border, bg, color, dashed }) => (
-          <div
-            key={label}
-            className={`rounded-xl border ${dashed ? 'border-dashed' : ''} ${border} ${bg} px-3 py-3 text-center`}
-          >
-            <p className={`text-[11px] font-bold ${color}`}>{label}</p>
-            <p className="text-[9px] text-gray-500 mt-0.5">{sub}</p>
-          </div>
-        ))}
-      </div>
-
-      <p className="text-[10px] text-gray-500 text-center italic">
-        Same policy logic — multiple enforcement points — zero duplication
-      </p>
-    </div>
+    <EntitlementsDiagram mode="exec" />
   </div>
 );
 
 /* ------------------------------------------------------------------ */
-/*  Section 7 — Implementation Specifics                               */
+/*  Section 7 — Governance in Action (scenarios)                       */
+/* ------------------------------------------------------------------ */
+/*  Section 7b — Governance in Action (scenarios)                      */
 /* ------------------------------------------------------------------ */
 
-export const EntitlementsSpecifics: React.FC = () => (
+const SCENARIOS: {
+  event: string;
+  trigger: string;
+  effect: React.ReactNode;
+  icon: string;
+}[] = [
+  {
+    event: 'New employee starts',
+    trigger: 'IT creates Okta account, assigns groups',
+    effect: <><C>ENTITLEMENTS</C> row created automatically. Employee sees only the data their role permits — day one, no tickets.</>,
+    icon: '→',
+  },
+  {
+    event: 'Employee offboarded',
+    trigger: 'Okta account deactivated',
+    effect: <><C>ENTITLEMENTS</C> rows removed. All platform access revoked within the next ELT cycle — no stale permissions.</>,
+    icon: '×',
+  },
+  {
+    event: 'Promotion / role change',
+    trigger: 'Manager updates Okta group membership',
+    effect: <><C>ENTITLEMENTS</C> adjust to reflect expanded (or narrowed) access. No engineering involvement.</>,
+    icon: '↑',
+  },
+  {
+    event: 'Developer joins a new project',
+    trigger: 'Added to project group in Okta',
+    effect: <>Data domains for that project become visible. Sandbox stays unchanged — governed schemas update.</>,
+    icon: '+',
+  },
+  {
+    event: 'Sales rep moves territories',
+    trigger: 'Territory reassigned in Salesforce',
+    effect: <>Rep sees new territory data, loses old territory data. Pipeline forecasts and dashboards adjust automatically.</>,
+    icon: '⇄',
+  },
+];
+
+export const GovernanceInAction: React.FC = () => (
   <div className="space-y-4">
     <h3 className="text-lg font-bold text-white border-b border-white/20 pb-2">
-      How It Works in Practice
+      Governance in Action
     </h3>
     <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
-      Okta and Salesforce — tools you already maintain — feed the{' '}
-      <C>ENTITLEMENTS</C> table through automated ELT pipelines. The table lives
-      in Snowflake today, but the pattern works identically against S3, a
-      database, or any future data store. Every enforcement point reads from one
-      place.
+      Every scenario below resolves automatically — no tickets, no manual grants,
+      no engineering time. The governance framework inherits changes from systems
+      your teams already maintain.
     </p>
-    <EntitlementsDiagram mode="exec" />
+    <div className="bg-[#111] border border-white/20 rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="grid grid-cols-[200px_1fr_1fr] gap-4 px-6 py-3 border-b border-white/10 bg-white/[0.03]">
+        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+          Event
+        </span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+          Current Ops Activity
+        </span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+          Auto-Updated Governance
+        </span>
+      </div>
+      {/* Rows */}
+      {SCENARIOS.map(({ event, trigger, effect, icon }, i) => (
+        <div
+          key={event}
+          className={`grid grid-cols-[200px_1fr_1fr] gap-4 px-6 py-4 items-start text-xs ${
+            i < SCENARIOS.length - 1 ? 'border-b border-white/[0.06]' : ''
+          }`}
+        >
+          <span className="text-white font-bold flex items-center gap-2">
+            <span className="shrink-0 w-6 h-6 rounded-md bg-emerald-600/15 text-emerald-400 text-[11px] font-black flex items-center justify-center">
+              {icon}
+            </span>
+            {event}
+          </span>
+          <span className="text-gray-400">{trigger}</span>
+          <span className="text-gray-300">{effect}</span>
+        </div>
+      ))}
+    </div>
+    <p className="text-[10px] text-emerald-500 text-center italic font-medium">
+      Zero engineering tickets. Zero manual access changes. Governance is a byproduct of operations you're already doing.
+    </p>
   </div>
 );
 

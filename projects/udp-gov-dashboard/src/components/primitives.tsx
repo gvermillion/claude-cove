@@ -4,6 +4,11 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  User,
+  Server,
+  Bot,
+  Share2,
+  X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -363,6 +368,141 @@ export const SubTabs = ({
   </div>
 );
 
+// --- Chapter narrative primitives ---
+
+/**
+ * Chapter identifier type. Each chapter has an id, a display label, and its
+ * 1-based position is derived from its index in the `chapters` array passed
+ * to `ChapterNav`.
+ */
+export interface Chapter<Id extends string = string> {
+  id: Id;
+  label: string;
+  icon?: LucideIcon;
+}
+
+/**
+ * Numbered chapter stepper. Replaces a flat tab bar when the content has a
+ * recommended reading order. Each pill shows its ordinal (1…N) plus the
+ * chapter label. The currently active pill is highlighted; completed pills
+ * (earlier than active) are dimmed but still clickable.
+ *
+ * Keep the chapter count small (≤ 6). For sub-beats inside a chapter, use
+ * `SubTabs` instead.
+ */
+export const ChapterNav = <Id extends string>({
+  chapters,
+  active,
+  onChange,
+}: {
+  chapters: Chapter<Id>[];
+  active: Id;
+  onChange: (id: Id) => void;
+}) => {
+  const activeIdx = chapters.findIndex((c) => c.id === active);
+  return (
+    <nav
+      aria-label="Chapter navigation"
+      className="flex items-center gap-1.5 border border-white/15 rounded-xl p-1.5 bg-[#0a0a0a] overflow-x-auto"
+    >
+      {chapters.map((c, i) => {
+        const isActive = c.id === active;
+        const isPast = i < activeIdx;
+        return (
+          <button
+            key={c.id}
+            onClick={() => onChange(c.id)}
+            aria-current={isActive ? 'step' : undefined}
+            className={`group flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap border ${
+              isActive
+                ? 'bg-red-600/15 text-red-400 border-red-600/40 shadow-lg shadow-red-950/20'
+                : isPast
+                  ? 'text-gray-400 border-transparent hover:bg-white/5 hover:text-white'
+                  : 'text-gray-600 border-transparent hover:bg-white/5 hover:text-gray-300'
+            }`}
+          >
+            <span
+              className={`shrink-0 w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center transition-colors ${
+                isActive
+                  ? 'bg-red-600/25 text-red-300'
+                  : isPast
+                    ? 'bg-white/10 text-gray-400'
+                    : 'bg-white/5 text-gray-600'
+              }`}
+            >
+              {i + 1}
+            </span>
+            {c.icon && <c.icon size={13} className="shrink-0" />}
+            {c.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+};
+
+/**
+ * Per-chapter footer that closes the chapter with a takeaway line and
+ * Prev/Next navigation keyed to chapter ids. Render at the bottom of each
+ * chapter body. Disables the Prev button on the first chapter and Next on
+ * the last — callers pass `null` for those ends.
+ */
+export const ChapterFooter = <Id extends string>({
+  prev,
+  next,
+  takeaway,
+  onNav,
+}: {
+  prev: Chapter<Id> | null;
+  next: Chapter<Id> | null;
+  takeaway: React.ReactNode;
+  onNav: (id: Id) => void;
+}) => (
+  <div className="mt-10 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent p-6">
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr] gap-4 items-stretch">
+      {/* Prev */}
+      {prev ? (
+        <button
+          onClick={() => onNav(prev.id)}
+          className="group flex flex-col items-start gap-1 rounded-xl border border-white/10 bg-[#0a0a0a] hover:border-white/25 hover:bg-white/[0.04] px-4 py-3 text-left transition-all"
+        >
+          <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-gray-500 group-hover:text-gray-400">
+            <ChevronLeft size={12} />
+            Previous
+          </span>
+          <span className="text-sm font-semibold text-white">{prev.label}</span>
+        </button>
+      ) : (
+        <div className="hidden md:block" />
+      )}
+
+      {/* Takeaway */}
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-3 flex flex-col justify-center">
+        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-1">
+          Takeaway
+        </span>
+        <p className="text-sm text-gray-200 leading-relaxed">{takeaway}</p>
+      </div>
+
+      {/* Next */}
+      {next ? (
+        <button
+          onClick={() => onNav(next.id)}
+          className="group flex flex-col items-end gap-1 rounded-xl border border-red-600/30 bg-red-600/5 hover:border-red-600/60 hover:bg-red-600/10 px-4 py-3 text-right transition-all"
+        >
+          <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-red-400">
+            Next
+            <ChevronRight size={12} />
+          </span>
+          <span className="text-sm font-semibold text-white">{next.label}</span>
+        </button>
+      ) : (
+        <div className="hidden md:block" />
+      )}
+    </div>
+  </div>
+);
+
 /** Step sidebar + detail panel layout. */
 export const StepSidebar = ({
   steps,
@@ -479,3 +619,604 @@ export const TwoColumnInteractive = ({
     <div className="min-w-0">{detail}</div>
   </div>
 );
+
+// --- Phase 0A: Red-team primitives ---
+
+// -- ClaimCard --
+
+export interface ClaimCardProps {
+  claim: string | React.ReactNode;
+  status: 'today' | 'partial' | 'roadmap';
+  caveat?: React.ReactNode;
+}
+
+const claimStatusColor: Record<ClaimCardProps['status'], string> = {
+  today: 'emerald',
+  partial: 'amber',
+  roadmap: 'blue',
+};
+
+const claimStatusLabel: Record<ClaimCardProps['status'], string> = {
+  today: 'Today',
+  partial: 'Partial',
+  roadmap: 'Roadmap',
+};
+
+/** Bolded claim + status badge + optional caveat. Used for narrative honesty panels. */
+export const ClaimCard = ({ claim, status, caveat }: ClaimCardProps) => {
+  const color = claimStatusColor[status];
+  const s = colorStyles[color];
+  return (
+    <div className={`relative rounded-xl border-l-4 ${s.border} ${s.bg} p-5`}>
+      <span
+        className={`absolute top-3 right-3 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${s.accent} ${s.numBg}`}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+        {claimStatusLabel[status]}
+      </span>
+      <p className="text-white font-bold text-sm leading-relaxed pr-24">{claim}</p>
+      {caveat && <p className="text-gray-500 text-xs mt-2 leading-relaxed">{caveat}</p>}
+    </div>
+  );
+};
+
+// -- FailureModeCard --
+
+export interface FailureModeCardProps {
+  title: string;
+  trigger: React.ReactNode;
+  blastRadius: React.ReactNode;
+  control: React.ReactNode;
+  owner: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
+const severityColor: Record<FailureModeCardProps['severity'], string> = {
+  low: 'blue',
+  medium: 'amber',
+  high: 'red',
+  critical: 'red',
+};
+
+/** Structured failure panel with severity chip, trigger, blast radius, control, owner. */
+export const FailureModeCard = ({ title, trigger, blastRadius, control, owner, severity }: FailureModeCardProps) => {
+  const color = severityColor[severity];
+  const s = colorStyles[color];
+  const rows: { label: string; content: React.ReactNode }[] = [
+    { label: 'TRIGGER', content: trigger },
+    { label: 'BLAST RADIUS', content: blastRadius },
+    { label: 'COMPENSATING CONTROL', content: control },
+    { label: 'OWNER', content: owner },
+  ];
+  return (
+    <div className={`rounded-xl border ${s.border} ${s.bg} overflow-hidden`}>
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+        <h4 className="text-white font-bold text-sm uppercase tracking-tight">{title}</h4>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${s.accent} ${s.numBg}`}>
+          {severity === 'critical' && <span className={`w-1.5 h-1.5 rounded-full ${s.dot} animate-pulse`} />}
+          {severity}
+        </span>
+      </div>
+      <div className="divide-y divide-white/5">
+        {rows.map((row) => (
+          <div key={row.label} className="px-5 py-3 grid grid-cols-[140px_1fr] gap-4 items-start">
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 pt-0.5">{row.label}</span>
+            <div className="text-xs text-gray-400 leading-relaxed">{row.content}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// -- RiskRegisterRow --
+
+export interface RiskRegisterRowProps {
+  risk: string;
+  probability: 'low' | 'med' | 'high';
+  impact: 'low' | 'med' | 'high';
+  detection: React.ReactNode;
+  owner: string;
+  mitigation: React.ReactNode;
+  status: 'accepted' | 'mitigated' | 'open';
+}
+
+const riskLevelColor: Record<'low' | 'med' | 'high', string> = {
+  low: 'text-blue-400',
+  med: 'text-amber-400',
+  high: 'text-red-400',
+};
+
+const riskStatusColor: Record<RiskRegisterRowProps['status'], { text: string; bg: string }> = {
+  accepted: { text: 'text-amber-400', bg: 'bg-amber-600/20' },
+  mitigated: { text: 'text-emerald-400', bg: 'bg-emerald-600/20' },
+  open: { text: 'text-red-400', bg: 'bg-red-600/20' },
+};
+
+/** Single row for a risk register table. Caller provides <table>/<thead>. */
+export const RiskRegisterRow = ({ risk, probability, impact, detection, owner, mitigation, status }: RiskRegisterRowProps) => {
+  const st = riskStatusColor[status];
+  return (
+    <tr className="hover:bg-white/[0.02] transition-colors">
+      <td className="px-4 py-3 text-xs text-gray-300 font-semibold leading-relaxed">{risk}</td>
+      <td className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest ${riskLevelColor[probability]}`}>{probability}</td>
+      <td className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest ${riskLevelColor[impact]}`}>{impact}</td>
+      <td className="px-4 py-3 text-xs text-gray-400 leading-relaxed">{detection}</td>
+      <td className="px-4 py-3 text-xs text-gray-400">{owner}</td>
+      <td className="px-4 py-3 text-xs text-gray-400 leading-relaxed">{mitigation}</td>
+      <td className="px-4 py-3">
+        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${st.text} ${st.bg}`}>
+          {status}
+        </span>
+      </td>
+    </tr>
+  );
+};
+
+// -- KillSwitchBadge --
+
+export interface KillSwitchBadgeProps {
+  action: string;
+}
+
+/** Compact amber pill showing how to disable an automation. */
+export const KillSwitchBadge = ({ action }: KillSwitchBadgeProps) => (
+  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-600/40 bg-amber-600/10 text-amber-400 text-[10px] font-mono tracking-wide">
+    <span className="font-black uppercase tracking-widest font-sans">Kill Switch:</span> {action}
+  </span>
+);
+
+// -- PrincipalChip --
+
+export interface PrincipalChipProps {
+  kind: 'human' | 'service' | 'agent' | 'share';
+  label: string;
+}
+
+const principalIconMap: Record<PrincipalChipProps['kind'], React.ElementType> = {
+  human: User,
+  service: Server,
+  agent: Bot,
+  share: Share2,
+};
+
+const principalColorMap: Record<PrincipalChipProps['kind'], string> = {
+  human: 'blue',
+  service: 'amber',
+  agent: 'emerald',
+  share: 'red',
+};
+
+/** Small chip for a principal identity with icon and colored border. */
+export const PrincipalChip = ({ kind, label }: PrincipalChipProps) => {
+  const Icon = principalIconMap[kind];
+  const s = colorStyles[principalColorMap[kind]];
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${s.border} ${s.bg} ${s.accent} text-[10px] font-bold uppercase tracking-wider`}>
+      <Icon size={12} />
+      {label}
+    </span>
+  );
+};
+
+// -- PrincipalSwitcher --
+
+export type Principal =
+  | { kind: 'human'; userName: string }
+  | { kind: 'service'; roleName: string }
+  | { kind: 'agent'; onBehalfOf?: string }
+  | { kind: 'share'; consumerAccount: string };
+
+export interface PrincipalSwitcherProps {
+  principal: Principal;
+  onChange: (p: Principal) => void;
+  options: Principal[];
+}
+
+function principalLabel(p: Principal): string {
+  switch (p.kind) {
+    case 'human': return p.userName;
+    case 'service': return p.roleName;
+    case 'agent': return p.onBehalfOf ? `Agent (${p.onBehalfOf})` : 'Agent';
+    case 'share': return p.consumerAccount;
+  }
+}
+
+function principalKey(p: Principal): string {
+  return `${p.kind}:${principalLabel(p)}`;
+}
+
+/** Sticky horizontal bar for selecting the active principal context. */
+export const PrincipalSwitcher = ({ principal, onChange, options }: PrincipalSwitcherProps) => (
+  <div className="sticky top-0 z-40 flex items-center gap-3 px-5 py-3 bg-[#0a0a0a] border border-white/10 rounded-xl">
+    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 shrink-0">Principal</span>
+    <div className="flex items-center gap-1.5 overflow-x-auto">
+      {options.map((opt) => {
+        const active = principalKey(opt) === principalKey(principal);
+        const color = principalColorMap[opt.kind];
+        const s = colorStyles[color];
+        const Icon = principalIconMap[opt.kind];
+        return (
+          <button
+            key={principalKey(opt)}
+            onClick={() => onChange(opt)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border ${
+              active
+                ? `${s.border} ${s.bg} ${s.accent}`
+                : 'border-transparent text-gray-500 hover:bg-white/5 hover:text-gray-300'
+            }`}
+          >
+            <Icon size={12} />
+            {principalLabel(opt)}
+          </button>
+        );
+      })}
+    </div>
+    <span className="ml-auto text-[10px] text-gray-600 italic shrink-0">Principal context affects every playground below</span>
+  </div>
+);
+
+// -- FailureTimeline --
+
+export interface TimelineEvent {
+  label: string;
+  kind: 'event' | 'control' | 'alert';
+  at: string;
+  note?: string;
+}
+
+export interface FailureTimelineProps {
+  events: TimelineEvent[];
+  gap?: { fromIndex: number; toIndex: number; label: string };
+}
+
+const timelineKindColor: Record<TimelineEvent['kind'], string> = {
+  event: 'gray',
+  control: 'emerald',
+  alert: 'red',
+};
+
+/** Horizontal timeline with dots, labels, and optional highlighted gap region. */
+export const FailureTimeline = ({ events, gap }: FailureTimelineProps) => (
+  <div className="relative overflow-x-auto py-8 px-4">
+    {/* Main line */}
+    <div className="absolute top-[42px] left-8 right-8 h-px bg-white/15" />
+    {/* Gap highlight */}
+    {gap && events.length > 1 && (
+      <div
+        className="absolute top-[34px] h-[17px] bg-red-600/15 border border-red-600/30 rounded"
+        style={{
+          left: `${(gap.fromIndex / (events.length - 1)) * 100}%`,
+          width: `${((gap.toIndex - gap.fromIndex) / (events.length - 1)) * 100}%`,
+        }}
+      >
+        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-red-400 whitespace-nowrap">
+          {gap.label}
+        </span>
+      </div>
+    )}
+    {/* Events */}
+    <div className="relative flex justify-between min-w-[400px]">
+      {events.map((evt, i) => {
+        const color = timelineKindColor[evt.kind];
+        const s = colorStyles[color];
+        return (
+          <div key={i} className="flex flex-col items-center text-center" style={{ width: `${100 / events.length}%` }}>
+            <span className="text-[9px] text-gray-500 mb-2">{evt.at}</span>
+            <div className={`w-3 h-3 rounded-full ${s.dot} ring-2 ring-[#080808] z-10`} />
+            <span className="text-[10px] text-gray-300 font-semibold mt-2 leading-tight max-w-[100px]">{evt.label}</span>
+            {evt.note && <span className="text-[9px] text-gray-600 mt-1 leading-tight max-w-[100px]">{evt.note}</span>}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+// -- TagLifecycleTrace --
+
+export interface TagLifecycleStep {
+  ddl: string;
+  tagState: 'set' | 'lost' | 'preserved' | 'inherited';
+  note?: React.ReactNode;
+}
+
+export interface TagLifecycleTraceProps {
+  steps: TagLifecycleStep[];
+}
+
+const tagStateColor: Record<TagLifecycleStep['tagState'], string> = {
+  set: 'emerald',
+  lost: 'red',
+  preserved: 'emerald',
+  inherited: 'blue',
+};
+
+/** Vertical ladder: DDL events on left, tag-state chips on right. */
+export const TagLifecycleTrace = ({ steps }: TagLifecycleTraceProps) => (
+  <div className="space-y-0">
+    {steps.map((step, i) => {
+      const color = tagStateColor[step.tagState];
+      const s = colorStyles[color];
+      return (
+        <div key={i} className="relative">
+          {/* Connector line */}
+          {i < steps.length - 1 && (
+            <div className="absolute left-[11px] top-8 bottom-0 w-px bg-white/10" />
+          )}
+          <div className="flex items-start gap-4 py-3">
+            {/* Dot */}
+            <div className={`shrink-0 w-[23px] h-[23px] rounded-full ${s.numBg} flex items-center justify-center mt-0.5`}>
+              <div className={`w-2 h-2 rounded-full ${s.dot}`} />
+            </div>
+            {/* DDL */}
+            <div className="flex-1 min-w-0">
+              <code className="text-xs font-mono text-gray-300 block leading-relaxed">{step.ddl}</code>
+              {step.note && <div className="text-[10px] text-gray-500 mt-1 leading-relaxed">{step.note}</div>}
+            </div>
+            {/* Tag state chip */}
+            <span className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${s.accent} ${s.numBg}`}>
+              {step.tagState}
+            </span>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+// -- PolicyBranchRoadmap --
+
+export interface Branch {
+  label: string;
+  expr: string;
+  status: 'current' | 'planned';
+  note?: string;
+}
+
+export interface PolicyBranchRoadmapProps {
+  current: Branch[];
+  planned: Branch[];
+}
+
+/** Policy CASE visualizer: current branches in full, planned branches ghosted with roadmap chip. */
+export const PolicyBranchRoadmap = ({ current, planned }: PolicyBranchRoadmapProps) => {
+  const renderBranch = (branch: Branch, i: number) => {
+    const isPlanned = branch.status === 'planned';
+    return (
+      <div
+        key={`${branch.status}-${i}`}
+        className={`flex items-start gap-3 px-4 py-3 rounded-lg border ${
+          isPlanned
+            ? 'border-blue-600/20 bg-blue-600/5 opacity-40'
+            : 'border-white/10 bg-white/[0.03]'
+        }`}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold text-gray-300">{branch.label}</span>
+            {isPlanned && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-blue-400 bg-blue-600/20">
+                Roadmap
+              </span>
+            )}
+          </div>
+          <code className="text-[11px] font-mono text-gray-500 block leading-relaxed">{branch.expr}</code>
+          {branch.note && <p className="text-[10px] text-gray-600 mt-1">{branch.note}</p>}
+        </div>
+      </div>
+    );
+  };
+  return (
+    <div className="space-y-2">
+      <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">CASE branches</div>
+      {current.map((b, i) => renderBranch(b, i))}
+      {planned.length > 0 && (
+        <>
+          <div className="border-t border-white/5 my-3" />
+          <div className="text-[10px] font-black uppercase tracking-widest text-blue-500/60 mb-2">Planned</div>
+          {planned.map((b, i) => renderBranch(b, i))}
+        </>
+      )}
+    </div>
+  );
+};
+
+// -- ComplianceMap --
+
+export interface Framework {
+  id: string;
+  label: string;
+}
+
+export interface ComplianceControl {
+  id: string;
+  label: string;
+}
+
+export type Coverage = 'full' | 'partial' | 'gap';
+
+export interface ComplianceMapProps {
+  frameworks: Framework[];
+  controls: ComplianceControl[];
+  coverage: Record<string, Record<string, Coverage>>;
+}
+
+const coverageStyle: Record<Coverage, { bg: string; text: string; icon: string }> = {
+  full: { bg: 'bg-emerald-600/20', text: 'text-emerald-400', icon: '\u2713' },
+  partial: { bg: 'bg-amber-600/20', text: 'text-amber-400', icon: '\u25B3' },
+  gap: { bg: 'bg-red-600/20', text: 'text-red-400', icon: '\u2717' },
+};
+
+/** Matrix of frameworks (rows) x controls (cols) with coverage indicators. */
+export const ComplianceMap = ({ frameworks, controls, coverage }: ComplianceMapProps) => (
+  <div className="overflow-x-auto rounded-lg border border-white/20 bg-[#0f0f0f]">
+    <table className="w-full text-left text-sm">
+      <thead className="bg-white/5">
+        <tr>
+          <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white">Framework</th>
+          {controls.map((ctrl) => (
+            <th key={ctrl.id} className="px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400 text-center">
+              {ctrl.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-white/5">
+        {frameworks.map((fw) => (
+          <tr key={fw.id} className="hover:bg-white/[0.02] transition-colors">
+            <td className="px-4 py-3 text-xs font-semibold text-gray-300">{fw.label}</td>
+            {controls.map((ctrl) => {
+              const cov = coverage[fw.id]?.[ctrl.id] ?? 'gap';
+              const cs = coverageStyle[cov];
+              return (
+                <td key={ctrl.id} className="px-3 py-3 text-center">
+                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${cs.bg} ${cs.text} text-xs font-bold`}>
+                    {cs.icon}
+                  </span>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// -- PrincipalMatrix --
+
+export interface PrincipalMatrixControl {
+  id: string;
+  label: string;
+}
+
+export type Effect = 'pass' | 'partial' | 'bypass';
+
+export interface PrincipalMatrixProps {
+  principals: { kind: string; label: string }[];
+  controls: PrincipalMatrixControl[];
+  effects: Record<string, Record<string, Effect>>;
+}
+
+const effectStyle: Record<Effect, { bg: string; text: string; icon: string }> = {
+  pass: { bg: 'bg-emerald-600/20', text: 'text-emerald-400', icon: '\u2713' },
+  partial: { bg: 'bg-amber-600/20', text: 'text-amber-400', icon: '\u25B3' },
+  bypass: { bg: 'bg-red-600/20', text: 'text-red-400', icon: '\u2717' },
+};
+
+/** Principals (rows) x controls (cols) matrix with pass/partial/bypass indicators. */
+export const PrincipalMatrix = ({ principals, controls, effects }: PrincipalMatrixProps) => (
+  <div className="overflow-x-auto rounded-lg border border-white/20 bg-[#0f0f0f]">
+    <table className="w-full text-left text-sm">
+      <thead className="bg-white/5">
+        <tr>
+          <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white">Principal</th>
+          {controls.map((ctrl) => (
+            <th key={ctrl.id} className="px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400 text-center">
+              {ctrl.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-white/5">
+        {principals.map((p) => (
+          <tr key={p.kind} className="hover:bg-white/[0.02] transition-colors">
+            <td className="px-4 py-3">
+              <PrincipalChip kind={p.kind as PrincipalChipProps['kind']} label={p.label} />
+            </td>
+            {controls.map((ctrl) => {
+              const eff = effects[p.kind]?.[ctrl.id] ?? 'bypass';
+              const es = effectStyle[eff];
+              return (
+                <td key={ctrl.id} className="px-3 py-3 text-center">
+                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${es.bg} ${es.text} text-xs font-bold`}>
+                    {es.icon}
+                  </span>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// -- EvidenceDrawer --
+
+export interface EvidenceQuery {
+  label: string;
+  sql: string;
+  expectedShape?: string;
+}
+
+export interface EvidenceDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  queries: EvidenceQuery[];
+}
+
+/** Right-side slide-over panel displaying SQL evidence queries. */
+export const EvidenceDrawer = ({ open, onClose, title, queries }: EvidenceDrawerProps) => {
+  if (!open) return null;
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose} />
+      {/* Panel */}
+      <div className="fixed top-0 right-0 h-full w-[480px] max-w-full z-50 bg-[#0a0a0a] border-l border-white/10 overflow-y-auto animate-in slide-in-from-right duration-300">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <h3 className="text-white font-bold text-sm uppercase tracking-tight">{title}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-6 space-y-6">
+          {queries.map((q, i) => (
+            <div key={i}>
+              <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">{q.label}</h4>
+              <pre className="text-[11px] font-mono text-gray-400 bg-[#111] border border-white/10 rounded-lg p-4 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                {q.sql}
+              </pre>
+              {q.expectedShape && (
+                <p className="text-[10px] text-gray-600 mt-2 italic">Expected shape: {q.expectedShape}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+// -- BoundaryOverlay --
+
+export interface BoundaryOverlayProps {
+  show: boolean;
+  children: React.ReactNode;
+  labels?: string[];
+}
+
+/** Wraps children with a dashed trust-boundary outline when show=true. */
+export const BoundaryOverlay = ({ show, children, labels }: BoundaryOverlayProps) => {
+  if (!show) return <>{children}</>;
+  return (
+    <div className="relative rounded-xl border-2 border-dashed border-red-600/40 p-4">
+      <div className="absolute top-2 right-3 flex items-center gap-2">
+        {labels?.map((lbl, i) => (
+          <span key={i} className="text-[9px] font-black uppercase tracking-widest text-red-400 bg-red-600/10 px-2 py-0.5 rounded">
+            {lbl}
+          </span>
+        ))}
+        {(!labels || labels.length === 0) && (
+          <span className="text-[9px] font-black uppercase tracking-widest text-red-400 bg-red-600/10 px-2 py-0.5 rounded">
+            Trust Boundary
+          </span>
+        )}
+      </div>
+      <div className="pt-4">{children}</div>
+    </div>
+  );
+};

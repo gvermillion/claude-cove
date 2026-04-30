@@ -288,14 +288,21 @@ const ExtensibilityView = () => {
         title="Cross-Platform Extensibility"
         subtitle="A representative target estate — illustrated here as Snowflake, AWS S3, and Bedrock — spans multiple enforcement points. This section proves that governance is a platform service, not a vendor-specific feature — and shows how to extend it to any platform."
         icon={Globe}
-        badge="Section 8"
+        badge="Extensibility"
       />
 
+      {/* Narrative connector */}
+      <p className="text-xs text-gray-500 italic -mt-4">
+        The ENTITLEMENTS PDP from the Hardening section extends beyond Snowflake. This section proves governance works across any enforcement platform.
+      </p>
+
       {/* Hub-and-Spoke Diagram */}
+      <div id="eng-ext-hub">
       <HubSpokeDiagram mode="eng" />
+      </div>
 
       {/* Three Concrete Recipes */}
-      <div className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-6">
+      <div id="eng-ext-recipes" className="bg-[#111] border border-white/20 rounded-xl p-8 space-y-6">
         <div>
           <h3 className="text-white font-bold text-sm uppercase tracking-tight">
             Extension Recipes
@@ -398,7 +405,7 @@ const ExtensibilityView = () => {
       </div>
 
       {/* PEP Comparison Matrix */}
-      <div className="space-y-3">
+      <div id="eng-ext-matrix" className="space-y-3">
         <h3 className="text-white font-bold text-xs uppercase tracking-widest">
           PEP Comparison: What&apos;s Reused, What&apos;s Platform-Specific
         </h3>
@@ -415,6 +422,21 @@ const ExtensibilityView = () => {
           <C>ENTITLEMENTS</C>, not a redesign of access logic.
         </p>
       </CalloutBox>
+
+      {/* The Bottom Line */}
+      <div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-8 space-y-3 shadow-xl shadow-emerald-950/10">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">
+          The Bottom Line
+        </p>
+        <h2 className="text-2xl font-black text-white tracking-tight leading-tight">
+          Governance is a platform service, not a vendor feature. Every new PEP plugs into the same ENTITLEMENTS table.
+        </h2>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
+          Snowflake RAPs, AWS Lake Formation row filters, and Bedrock guardrails all read
+          the same source of truth. Adding a new enforcement platform is a lookup integration
+          — not a governance redesign.
+        </p>
+      </div>
     </div>
   );
 };

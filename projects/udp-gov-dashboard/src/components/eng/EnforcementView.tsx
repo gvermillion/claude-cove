@@ -304,6 +304,77 @@ const ValidationGatePanel = () => {
   );
 };
 
+const PiiInteractionSection = () => {
+  const [showConflict, setShowConflict] = useState(false);
+
+  return (
+    <div id="eng-enf-pii" className="space-y-4">
+      <h3 className="text-base font-bold text-white uppercase tracking-tight border-b border-white/20 pb-2">
+        PII Masking / RLS Interaction Rule
+      </h3>
+      <div className="bg-[#111] p-6 rounded-xl border border-white/15 space-y-4">
+        <p className="text-sm text-gray-400 leading-relaxed">
+          Dynamic Data Masking (via <C>PII_POLICY</C> tags) and Row Access Policies coexist on Gold tables.
+        </p>
+
+        {/* Interactive conflict toggle */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowConflict(!showConflict)}
+            className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all duration-200 ${
+              showConflict
+                ? 'border-red-600/30 bg-red-600/10 text-red-400'
+                : 'border-white/20 bg-white/5 text-gray-400 hover:text-white'
+            }`}
+          >
+            {showConflict ? '✗ Conflict Scenario' : 'Show Conflict Scenario'}
+          </button>
+          <span className="text-[10px] text-gray-500 italic">
+            What if a column is both a PII target AND a RAP filter?
+          </span>
+        </div>
+
+        {showConflict && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 p-4 rounded-xl border border-red-600/40 bg-red-600/10 space-y-3">
+            <p className="text-xs text-red-400 font-bold uppercase tracking-wide">Conflict Detected</p>
+            <p className="text-xs text-gray-400">
+              Column <C>EMAIL</C> is tagged with <C>PII_POLICY</C> for masking,
+              but also used as a RAP filter dimension. The RAP would compare the masked value (e.g., <code className="text-gray-500">****@cs.com</code>)
+              against the <C>ENTITLEMENTS</C> value — causing silent access denial for all rows.
+            </p>
+            <p className="text-xs text-white font-semibold">
+              → This is why the separation rule exists. It prevents this class of bugs at design time.
+            </p>
+          </div>
+        )}
+
+        <CalloutBox title="Separation Rule" variant="red">
+          <p>
+            <span className="text-white font-semibold">Masked columns cannot be used as RAP filter dimensions.</span>{' '}
+            Columns tagged with <C>PII_POLICY</C> must be structurally separate from the security attribute columns.
+          </p>
+        </CalloutBox>
+        <CalloutBox title="Certification Prerequisite" variant="amber">
+          <p>
+            A test matrix documenting expected behavior for every RAP + masking combination on a
+            given Gold table is a <span className="text-white font-semibold">prerequisite for Gold layer certification</span>.
+          </p>
+        </CalloutBox>
+        <CalloutBox title="ABAC + RBAC: layered access models" variant="blue">
+          <p>
+            The default model is <span className="text-white font-semibold">ABAC</span> — access derives from attributes
+            (region, owner, domain) recorded in <C>ENTITLEMENTS</C>. PII unmasking is the natural place for an{' '}
+            <span className="text-white font-semibold">RBAC overlay</span>: grant <C>UNMASK_PII</C> to specific roles
+            (e.g. <C>SECURITY_ANALYST</C>, <C>FRAUD_INVESTIGATOR</C>) so that column masking respects role membership in
+            addition to row-level entitlements. Layering RBAC on ABAC keeps the data plane attribute-driven while exposing
+            a clear, auditable surface for sensitive-data exemptions.
+          </p>
+        </CalloutBox>
+      </div>
+    </div>
+  );
+};
+
 // --- Main component ---
 
 const EnforcementView = () => {
@@ -316,22 +387,36 @@ const EnforcementView = () => {
         title="System-Based Enforcement"
         subtitle="No single control can be trusted in isolation. This section shows how four independent enforcement layers create a system where any one can fail without compromising data security."
         icon={Layers}
-        badge="Section 3"
+        badge="Hardening"
       />
 
+      {/* Narrative connector */}
+      <p className="text-xs text-gray-500 italic -mt-4">
+        The policies and schemas defined in earlier sections are enforced by the layers below. This is where the NIST PDP/PEP pattern becomes concrete.
+      </p>
+
       {/* Governance Architecture Overview */}
-      <div className="space-y-4">
+      <div id="eng-enf-arch" className="space-y-4">
         <h3 className="text-base font-bold text-white uppercase tracking-tight">
           Governance Architecture
           <span className="text-gray-500 font-normal text-xs ml-2 normal-case tracking-normal">
-            — sources feed the PDP, PDP drives all enforcement
+            —{' '}
+            <a
+              href="https://csrc.nist.gov/pubs/sp/800/162/upd2/final"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-500/80 hover:text-emerald-400 underline decoration-emerald-500/30 hover:decoration-emerald-400/60 transition-colors"
+            >
+              NIST SP 800-162
+            </a>
+            {' '}PDP / PEP segregation
           </span>
         </h3>
         <EntitlementsDiagram />
       </div>
 
       {/* Defense-in-Depth Cutaway */}
-      <div className="space-y-4">
+      <div id="eng-enf-depth" className="space-y-4">
         <h3 className="text-base font-bold text-white uppercase tracking-tight">
           Defense-in-Depth Layers
           <span className="text-gray-500 font-normal text-xs ml-2 normal-case tracking-normal">
@@ -341,13 +426,16 @@ const EnforcementView = () => {
         <DefenseDiagram />
       </div>
 
+      {/* PII Masking / RLS Interaction */}
+      <PiiInteractionSection />
+
       {/* ENTITLEMENTS Lifecycle — step-through */}
-      <div className="p-8 border border-red-900/40 rounded-xl bg-red-900/10 relative overflow-hidden">
+      <div id="eng-enf-lifecycle" className="p-8 border border-red-900/40 rounded-xl bg-red-900/10 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
           <Lock size={120} className="text-red-600" />
         </div>
         <h3 className="text-lg font-bold text-white mb-1 uppercase tracking-tight">
-          §3.1 — Anatomy of an <C>ENTITLEMENTS</C> Record
+          Anatomy of an <C>ENTITLEMENTS</C> Record
         </h3>
         <p className="text-xs text-gray-400 mb-6">
           Single point of control for all <C>RLS</C>. Every record has a lifecycle — birth, validation, promotion, audit, and retirement.
@@ -405,7 +493,7 @@ const EnforcementView = () => {
       </div>
 
       {/* Sandbox Hardening Controls — canonical location */}
-      <div className="space-y-4">
+      <div id="eng-enf-sandbox" className="space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2 uppercase tracking-tight">
           <Shield size={18} className="text-red-600" /> Sandbox Hardening Controls
           <span className="text-gray-500 font-normal text-xs ml-1 normal-case tracking-normal">
@@ -434,6 +522,22 @@ const EnforcementView = () => {
             This is the same defense-in-depth principle applied to the developer experience.
           </p>
         </CalloutBox>
+      </div>
+
+      {/* The Bottom Line */}
+      <div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-8 space-y-3 shadow-xl shadow-emerald-950/10">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">
+          The Bottom Line
+        </p>
+        <h2 className="text-2xl font-black text-white tracking-tight leading-tight">
+          Four independent enforcement layers, each fail-safe. No single control failure compromises the system.
+        </h2>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
+          Entitlements lifecycle controls birth-to-retirement. Validation gates reject bad
+          data before it reaches production. Defense-in-depth layers protect the developer
+          sandbox. Every layer operates independently — the system is designed to survive
+          the failure of any one component.
+        </p>
       </div>
     </div>
   );

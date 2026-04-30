@@ -1,9 +1,6 @@
 import React from 'react';
 import {
   Cpu,
-  RefreshCcw,
-  Lock,
-  ArrowRight,
   ChevronDown,
 } from 'lucide-react';
 import {
@@ -35,36 +32,24 @@ const SANDBOX_BLOCKED = [
   { label: 'EXFIL VIA UDF (network egress)', detail: 'External access integrations are not enabled in sandbox.' },
 ];
 
-const SANDBOX_PERIMETER_GUARANTEES = [
-  { label: 'Row Access Policies remain enforced', detail: 'Reading governed schemas applies the same RAPs as production.' },
-  { label: 'Masking Policies remain enforced',    detail: 'PII columns stay masked in sandbox queries.' },
-  { label: 'Lineage is captured',                  detail: 'Snowflake ACCESS_HISTORY records every read; sandbox is fully audited.' },
-  { label: '30-day auto-drop',                     detail: 'Idle sandbox schemas are auto-cleaned after 30 days.' },
-  { label: 'Offboarding cascade',                  detail: 'When a user is offboarded in Okta, their sandbox is dropped within 24h.' },
-];
 
-// --- Hardening layer data (compact summary — canonical detail lives in EnforcementView) ---
-
-const hardeningSummary = [
-  { label: 'Isolation', desc: 'User-owned role per sandbox — no cross-user access' },
-  { label: 'DLP Block', desc: 'COPY INTO and external stages explicitly revoked' },
-  { label: '30-Day Auto-Drop', desc: 'Stale objects cleaned up automatically' },
-  { label: 'Offboarding Cascade', desc: 'DROP SCHEMA CASCADE on Okta deactivation' },
-  { label: 'Lineage Tagging', desc: 'Gold-layer source metadata for SecOps audit' },
-];
-
-const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) => {
+const SandboxView = (_props: { onNavigate?: (tabId: string) => void }) => {
   return (
     <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
       <SectionHeader
         title="The Governed Developer Experience"
         subtitle="Developers need unrestricted iteration speed. The enterprise needs security guarantees. This section shows how both coexist — without requiring developers to understand governance."
         icon={Cpu}
-        badge="Section 2 · Developer Experience"
+        badge="Developer Experience"
       />
 
+      {/* Narrative connector */}
+      <p className="text-xs text-gray-500 italic -mt-4">
+        The Overview established the governance challenge. This section shows how developers interact with the governed platform — without ever touching a policy.
+      </p>
+
       {/* Thesis headline — the page's central claim, lifted from the bottom callout */}
-      <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent p-8 shadow-xl shadow-blue-950/10">
+      <div id="eng-sb-thesis" className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent p-8 shadow-xl shadow-blue-950/10">
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 mb-3">
           The Thesis
         </p>
@@ -72,33 +57,98 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
           Governance is invisible to the developer.
         </h2>
         <p className="text-sm text-gray-300 leading-relaxed max-w-3xl">
-          The developer never writes a <C>GRANT</C>, applies a tag, or configures a
-          policy. They write SQL in their sandbox, ask Copilot for routing guidance
-          when ready to share, and promote via dbt. Security is structural — enforced by schema placement
-          and tag inheritance.
+          Every developer gets a private sandbox schema with full CRUD — no tickets, no
+          admin overhead. When they&apos;re ready to share, Cortex Code discovers the data
+          domain and recommends the correct governed schema. Writing there triggers
+          governance automatically: dbt post-hooks apply tags, and tag inheritance
+          activates Row Access Policies. The developer never writes
+          a <C>GRANT</C>, applies a tag, or configures a policy.
         </p>
       </div>
 
-      {/* Two-Stage Lifecycle — overview + SDLC diagram + stage cards */}
-      <div className="space-y-6">
-        <h3 className="text-base font-bold text-white flex items-center gap-2 uppercase tracking-tight">
-          <RefreshCcw size={18} className="text-red-600" /> The Two-Stage Lifecycle
-        </h3>
-        <p className="text-sm text-gray-300 leading-relaxed max-w-3xl">
-          Every developer gets a private sandbox schema with full CRUD — no tickets,
-          no admin overhead. When they're ready to share their work, Cortex Copilot
-          analyzes the data and recommends the correct governed schema based on security
-          grain. Writing to that schema automatically triggers governance: dbt post-hooks
-          apply tags, and tag inheritance activates Row Access Policies. The developer
-          never touches a policy.
-        </p>
-        <SDLCDiagram />
-        <div className="bg-[#111] border border-white/20 rounded-xl p-8">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 items-center">
+      {/* CoCo mock + stage cards */}
+      <div id="eng-sb-lifecycle" className="space-y-6">
+        {/* Side-by-side: CoCo mock (left) + stage cards (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Cortex Code interaction mock — shows the AI-assisted routing moment */}
+          <div className="rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden self-start">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
+              <div className="flex gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+              </div>
+              <span className="text-[10px] font-mono text-gray-500 ml-2">cortex code</span>
+            </div>
+            <div className="p-5 space-y-4 font-mono text-[11px] leading-relaxed">
+              {/* Developer prompt */}
+              <div className="flex gap-3">
+                <span className="shrink-0 text-blue-400 font-bold select-none">&gt;</span>
+                <span className="text-gray-300">
+                  I want to share <C>SANDBOX_GVERMILLION.STG_OPPORTUNITIES</C>
+                </span>
+              </div>
+              {/* Cortex Code response */}
+              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-3">
+                {/* Discovery */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Discovery</p>
+                  <p className="text-gray-400">
+                    Scanned <span className="text-white font-semibold">23 columns</span>.
+                    Detected domain{' '}
+                    <span className="px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/25 text-blue-400 font-bold">SALES</span>
+                    {' '}at grain{' '}
+                    <span className="px-1.5 py-0.5 rounded bg-red-600/15 border border-red-600/30 text-red-400 font-bold">ROW</span>
+                    {' '}— columns <C>ACCOUNT_ID</C> and <C>TERRITORY_CODE</C> map to the
+                    ENTITLEMENTS join key.
+                  </p>
+                </div>
+                {/* Preflight checks */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Preflight</p>
+                  <div className="space-y-1">
+                    <p className="text-gray-400"><span className="text-emerald-400">&#10003;</span> Required join key <C>ACCOUNT_ID</C> present and non-null</p>
+                    <p className="text-gray-400"><span className="text-emerald-400">&#10003;</span> Schema <C>PROD.SALES_GOLD</C> exists with active RAP binding</p>
+                    <p className="text-gray-400"><span className="text-emerald-400">&#10003;</span> No PII columns detected outside masking policy coverage</p>
+                    <p className="text-gray-400"><span className="text-emerald-400">&#10003;</span> dbt model <C>opportunities</C> found with post-hook configured</p>
+                  </div>
+                </div>
+                {/* Recommendation */}
+                <div className="border-t border-white/[0.06] pt-2.5">
+                  <p className="text-gray-400">
+                    Write to{' '}
+                    <span className="px-1.5 py-0.5 rounded bg-red-600/15 border border-red-600/30 text-red-400 font-bold">
+                      PROD.SALES_GOLD.OPPORTUNITIES
+                    </span>
+                    . Tags <C>DATA_DOMAIN=&apos;SALES&apos;</C> and <C>GOVERNANCE_GRAIN=&apos;ROW&apos;</C> will
+                    bind via dbt post-hook, activating the existing RAP.
+                  </p>
+                </div>
+                {/* Promotion flow */}
+                <div className="border-t border-white/[0.06] pt-2.5">
+                  <p className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">Promotion flow</p>
+                  <p className="text-gray-500">
+                    <span className="text-gray-400">1.</span> dbt run --select opportunities{' '}
+                    <span className="text-gray-600">&#8594;</span>{' '}
+                    <span className="text-gray-400">2.</span> post-hook applies tags{' '}
+                    <span className="text-gray-600">&#8594;</span>{' '}
+                    <span className="text-gray-400">3.</span> RAP activates on next query
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stage cards: Private Sandbox → Shared Perimeter */}
+          <div className="bg-[#111] border border-white/20 rounded-xl p-6 self-start space-y-5">
+            {/* Private Sandbox */}
             <div className="rounded-xl border border-gray-500/30 bg-white/[0.05] p-6 transition-all duration-300">
               <div className="flex items-center gap-3 mb-3">
                 <span className="w-7 h-7 rounded-lg bg-white/10 text-gray-400 font-black text-xs flex items-center justify-center">1</span>
-                <h4 className="text-white font-bold uppercase tracking-tight text-sm">Private Lab</h4>
+                <div>
+                  <h4 className="text-white font-bold uppercase tracking-tight text-sm">Private Sandbox</h4>
+                  <p className="text-[10px] font-mono text-gray-500">DEV.SANDBOX_ALICE</p>
+                </div>
               </div>
               <p className="text-xs text-gray-400 leading-relaxed mb-4">
                 Personal sandbox schema — full CRUD, no admin overhead.
@@ -144,15 +194,8 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
                 </div>
               </details>
             </div>
-            <div className="hidden md:flex flex-col items-center gap-2 text-gray-500">
-              <svg width="48" height="12" viewBox="0 0 48 12" fill="none">
-                <path d="M0 6h44m0 0l-4-4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-              <span className="text-[9px] font-mono text-red-600/60 uppercase leading-tight text-center max-w-[140px]">
-                dbt post-hook: adds <C>DATA_DOMAIN</C>, <C>GOVERNANCE_GRAIN</C> tags
-              </span>
-            </div>
-            <div className="flex md:hidden flex-col items-center gap-2 py-2 text-gray-500">
+            {/* Arrow */}
+            <div className="flex flex-col items-center gap-2 text-gray-500">
               <svg width="12" height="32" viewBox="0 0 12 32" fill="none">
                 <path d="M6 0v28m0 0l-4-4m4 4l4-4" stroke="currentColor" strokeWidth="1.5" />
               </svg>
@@ -160,53 +203,55 @@ const SandboxView = ({ onNavigate }: { onNavigate?: (tabId: string) => void }) =
                 dbt post-hook: adds <C>DATA_DOMAIN</C>, <C>GOVERNANCE_GRAIN</C> tags
               </span>
             </div>
+            {/* Shared Perimeter */}
             <div className="rounded-xl border border-red-600/40 bg-red-600/10 p-6 transition-all duration-300">
               <div className="flex items-center gap-3 mb-3">
                 <span className="w-7 h-7 rounded-lg bg-red-600/20 text-red-500 font-black text-xs flex items-center justify-center">2</span>
-                <h4 className="text-white font-bold uppercase tracking-tight text-sm">Shared Perimeter</h4>
+                <div>
+                  <h4 className="text-white font-bold uppercase tracking-tight text-sm">Shared Perimeter</h4>
+                  <p className="text-[10px] font-mono text-red-400/60">PROD.SALES_GOLD</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-400 leading-relaxed mb-4">
+              <p className="text-xs text-gray-400 leading-relaxed">
                 RAP-controlled shared schema — enterprise security wraps all exported data.
+                Hardening controls enforced automatically on promotion.
               </p>
-              <div className="space-y-1.5">
-                {SANDBOX_PERIMETER_GUARANTEES.map((item) => (
-                  <div key={item.label}>
-                    <span className="text-xs font-mono text-red-300">{item.label}</span>
-                    <p className="text-[10px] text-gray-400 leading-tight">{item.detail}</p>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sandbox Hardening Controls — compact summary */}
-      <div className="space-y-4">
-        <h3 className="text-base font-bold text-white flex items-center gap-2 uppercase tracking-tight">
-          <Lock size={18} className="text-red-600" /> Sandbox Hardening Controls
+      {/* Two Paths to Governance — motivational lead-in + diagram */}
+      <div id="eng-sb-two-paths" className="space-y-4">
+        <h3 className="text-base font-bold text-white uppercase tracking-tight">
+          Two Paths to Governance
         </h3>
-        <div className="bg-[#111] border border-white/20 rounded-xl p-6 space-y-3">
-          {hardeningSummary.map((item, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <span className="shrink-0 w-5 h-5 rounded bg-red-600/20 text-red-500 font-black text-[9px] flex items-center justify-center">
-                {i + 1}
-              </span>
-              <p className="text-xs text-gray-400">
-                <span className="text-white font-bold">{item.label}</span>
-                {' — '}
-                {item.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() => onNavigate?.('enforcement')}
-          className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors group"
-        >
-          <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-          See §3: Hardening for full controls detail
-        </button>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
+          The Cortex Code interaction above shows a single developer&apos;s journey. At the
+          platform level, that journey maps to one of two lanes. Lane&nbsp;A is the manual
+          promotion path — developers iterate in sandbox and write to a governed schema in
+          dev or other non-prod environments. Lane&nbsp;B is the CI/CD pipeline path, which is
+          the <span className="text-white font-semibold">only path that can reach production</span>.
+          Both lanes converge on the same governed schema and trigger the same dbt post-hooks,
+          but only Lane&nbsp;B carries the version control, schema tests, and gate checks
+          required for production deployment.
+        </p>
+        <SDLCDiagram />
+      </div>
+
+      {/* The Bottom Line */}
+      <div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-8 space-y-3 shadow-xl shadow-emerald-950/10">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">
+          The Bottom Line
+        </p>
+        <h2 className="text-2xl font-black text-white tracking-tight leading-tight">
+          Developers never touch governance. Governance never misses a table.
+        </h2>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-3xl">
+          Schema placement and tag inheritance make security structural. The sandbox gives
+          full iteration speed; the shared perimeter enforces full enterprise controls.
+          No tickets, no admin overhead, no gaps.
+        </p>
       </div>
 
     </div>

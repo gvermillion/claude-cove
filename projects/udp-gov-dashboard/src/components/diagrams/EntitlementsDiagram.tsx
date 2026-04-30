@@ -470,7 +470,7 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
               strokeOpacity={edgeOpacity('edge-sf')}
             />
             <path
-              d="M 210,30 L 210,130"
+              d="M 210,34 L 210,130"
               fill="none"
               stroke="#888"
               strokeWidth={edgeWidth('edge-future-src')}
@@ -543,8 +543,9 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
               style={{ cursor: 'pointer', opacity: futureOpacity('future-src') }}
               onMouseEnter={() => setHovered('future-src')}
             >
-              <rect x="175" y="0" width="70" height="28" rx="6" fill="none" stroke="#888" strokeWidth="1" strokeDasharray="3 3" />
-              <text x="210" y="17" textAnchor="middle" fill="#888" fontSize="7" fontWeight="600">FUTURE</text>
+              <rect x="175" y="0" width="70" height="34" rx="6" fill="none" stroke="#888" strokeWidth="1" strokeDasharray="3 3" />
+              <text x="210" y="15" textAnchor="middle" fill="#888" fontSize="7" fontWeight="600">FUTURE</text>
+              <text x="210" y="27" textAnchor="middle" fill="#888" fontSize="6">e.g. HRIS</text>
             </g>
 
             {/* PDP center */}
@@ -582,7 +583,7 @@ export const EntitlementsDiagram: React.FC<EntitlementsDiagramProps> = ({
             {/* Row labels */}
             <text x="8" y="46" fill="#666" fontSize="6.5" fontWeight="600">SOURCES</text>
             <text x="8" y="163" fill="#666" fontSize="6.5" fontWeight="600">PDP</text>
-            <text x="8" y="292" fill="#666" fontSize="6.5" fontWeight="600">PEPs</text>
+            <text x="8" y="260" fill="#666" fontSize="6.5" fontWeight="600">PEPs</text>
           </svg>
         </div>
 

@@ -4,8 +4,6 @@ import {
   Shield,
   Cpu,
   Layers,
-  Tags,
-  Table2,
   Code,
   Globe,
   Settings,
@@ -33,9 +31,7 @@ import {
   EngOverviewView,
   SandboxView,
   EnforcementView,
-  TaxonomyView,
-  PolicyView,
-  SchemaView,
+  GovernanceImplView,
   ExtensibilityView,
   OpsView,
 } from './components/eng';
@@ -44,29 +40,95 @@ type ExecTabId = 'summary' | 'architecture' | 'security' | 'roadmap';
 type EngTabId =
   | 'overview'
   | 'sandbox'
+  | 'governance'
   | 'enforcement'
-  | 'taxonomy'
-  | 'schema'
-  | 'policy'
   | 'extensibility'
   | 'ops';
 
-const execMenu: { id: ExecTabId; label: string; icon: LucideIcon }[] = [
-  { id: 'summary', label: 'Summary', icon: Briefcase },
-  { id: 'architecture', label: 'Architecture', icon: Network },
-  { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'roadmap', label: 'Roadmap', icon: Map },
+interface SubSection {
+  id: string;
+  label: string;
+}
+
+const execMenu: {
+  id: ExecTabId;
+  label: string;
+  icon: LucideIcon;
+  sections?: SubSection[];
+}[] = [
+  {
+    id: 'summary',
+    label: 'Summary',
+    icon: Briefcase,
+    sections: [
+      { id: 'summary-problem', label: 'Problem Today' },
+      { id: 'summary-horizon', label: 'Scaling Horizon' },
+      { id: 'summary-requirements', label: 'Design Requirements' },
+      { id: 'summary-nist', label: 'NIST Pattern' },
+      { id: 'summary-action', label: 'Governance in Action' },
+      { id: 'summary-value', label: 'Value Proposition' },
+    ],
+  },
+  {
+    id: 'architecture',
+    label: 'Scale & Extend',
+    icon: Network,
+    sections: [
+      { id: 'arch-hub', label: 'Hub & Spokes' },
+      { id: 'arch-scaling', label: 'Scaling Scenarios' },
+    ],
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    icon: ShieldCheck,
+    sections: [
+      { id: 'sec-risk', label: 'Risk → Defense' },
+      { id: 'sec-depth', label: 'Defense in Depth' },
+      { id: 'sec-dimensions', label: 'Two Dimensions' },
+      { id: 'sec-compliance', label: 'Compliance & Audit' },
+    ],
+  },
+  {
+    id: 'roadmap',
+    label: 'Roadmap',
+    icon: Map,
+    sections: [
+      { id: 'road-preudp', label: 'Pre-UDP' },
+      { id: 'road-golive', label: 'UDP Go-Live' },
+      { id: 'road-day2', label: 'Day 2 Ops' },
+      { id: 'road-attention', label: 'Governance Attention' },
+    ],
+  },
 ];
 
-const engMenu: { id: EngTabId; label: string; icon: LucideIcon }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'sandbox', label: 'Developer Experience', icon: Cpu },
-  { id: 'schema', label: 'Schema Design', icon: Table2 },
-  { id: 'taxonomy', label: 'Tag Taxonomy', icon: Tags },
-  { id: 'policy', label: 'Policy Logic', icon: Code },
-  { id: 'enforcement', label: 'Hardening', icon: Layers },
-  { id: 'extensibility', label: 'Extensibility', icon: Globe },
-  { id: 'ops', label: 'Roadmap & Ops', icon: Settings },
+const engMenu: { id: EngTabId; label: string; icon: LucideIcon; sections?: SubSection[] }[] = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard, sections: [
+    { id: 'eng-ov-risks', label: 'Core Risks' },
+    { id: 'eng-ov-topics', label: "What's Covered" },
+  ]},
+  { id: 'sandbox', label: 'Developer Experience', icon: Cpu, sections: [
+    { id: 'eng-sb-thesis', label: 'The Thesis' },
+    { id: 'eng-sb-lifecycle', label: 'CoCo & Stages' },
+    { id: 'eng-sb-two-paths', label: 'Two Paths to Governance' },
+  ]},
+  { id: 'governance', label: 'Implementation', icon: Code },
+  { id: 'enforcement', label: 'Hardening', icon: Layers, sections: [
+    { id: 'eng-enf-arch', label: 'Governance Architecture' },
+    { id: 'eng-enf-depth', label: 'Defense in Depth' },
+    { id: 'eng-enf-pii', label: 'PII / RLS Interaction' },
+    { id: 'eng-enf-lifecycle', label: 'ENTITLEMENTS Lifecycle' },
+    { id: 'eng-enf-sandbox', label: 'Sandbox Hardening' },
+  ]},
+  { id: 'extensibility', label: 'Extensibility', icon: Globe, sections: [
+    { id: 'eng-ext-hub', label: 'Hub & Spokes' },
+    { id: 'eng-ext-recipes', label: 'Extension Recipes' },
+    { id: 'eng-ext-matrix', label: 'PEP Comparison' },
+  ]},
+  { id: 'ops', label: 'Roadmap & Ops', icon: Settings, sections: [
+    { id: 'eng-ops-roadmap', label: 'Rollout Roadmap' },
+    { id: 'eng-ops-stewards', label: 'Domain Stewards' },
+  ]},
 ];
 
 export default function App() {
@@ -101,7 +163,7 @@ export default function App() {
   );
 
   const execViews: Record<ExecTabId, React.ReactNode> = {
-    summary: <ExecSummaryView onNavigate={navigateExec} />,
+    summary: <ExecSummaryView />,
     architecture: <ExecArchitectureView />,
     security: <ExecSecurityView />,
     roadmap: <ExecRoadmapView />,
@@ -110,10 +172,8 @@ export default function App() {
   const engViews: Record<EngTabId, React.ReactNode> = {
     overview: <EngOverviewView onNavigate={navigateEng} />,
     sandbox: <SandboxView onNavigate={navigateEng} />,
+    governance: <GovernanceImplView onNavigate={navigateEng} />,
     enforcement: <EnforcementView />,
-    taxonomy: <TaxonomyView />,
-    schema: <SchemaView />,
-    policy: <PolicyView />,
     extensibility: <ExtensibilityView />,
     ops: <OpsView />,
   };
@@ -131,7 +191,13 @@ export default function App() {
           isSidebarOpen ? 'w-64' : 'w-20'
         } fixed inset-y-0 left-0 bg-[#0d0d0d] border-r border-white/15 transition-all duration-300 z-50 flex flex-col`}
       >
-        <div className="p-6 flex items-center justify-between mb-2">
+        <div
+          className={`flex items-center mb-2 ${
+            isSidebarOpen
+              ? 'p-6 justify-between'
+              : 'px-3 pt-5 pb-3 flex-col gap-2'
+          }`}
+        >
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-red-600 flex items-center justify-center rounded-sm shrink-0 shadow-lg shadow-red-900/10">
               <Shield size={22} className="text-white fill-white" />
@@ -154,13 +220,33 @@ export default function App() {
 
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto pb-6">
           {menuItems.map((item) => (
-            <SidebarItem
-              key={item.id}
-              icon={item.icon}
-              label={isSidebarOpen ? item.label : ''}
-              active={activeId === item.id}
-              onClick={() => onNavigate(item.id)}
-            />
+            <React.Fragment key={item.id}>
+              <SidebarItem
+                icon={item.icon}
+                label={isSidebarOpen ? item.label : ''}
+                active={activeId === item.id}
+                onClick={() => onNavigate(item.id)}
+              />
+              {activeId === item.id &&
+                isSidebarOpen &&
+                item.sections && (
+                  <div className="ml-9 border-l border-white/10 pl-3 py-1 space-y-0.5">
+                    {item.sections.map((sub) => (
+                      <button
+                        key={sub.id}
+                        onClick={() =>
+                          document
+                            .getElementById(sub.id)
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }
+                        className="block w-full text-left text-[10px] text-gray-500 hover:text-white py-1 px-2 rounded transition-colors hover:bg-white/5 truncate"
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+            </React.Fragment>
           ))}
         </nav>
       </aside>
