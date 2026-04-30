@@ -1,13 +1,17 @@
+name: m4-agentic-workspace
+
 services:
+  # ── Workflow orchestration ─────────────────────────────────────────────────
   n8n:
     image: n8nio/n8n:1.121.0
+    restart: unless-stopped
     ports:
       - "5678:5678"
     depends_on:
       agent-host:
         condition: service_healthy
     environment:
-      - WEBHOOK_URL=http://localhost:5678/
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
       - N8N_USER_MANAGEMENT_DISABLED=true
       - N8N_DIAGNOSTICS_ENABLED=false
       - DB_SQLITE_POOL_SIZE=4
@@ -17,26 +21,61 @@ services:
       - ${GRANOLA_SYNC_PATH}:/granola-sync:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
     networks:
       - agentic
 
+  # ── Vector database ────────────────────────────────────────────────────────
   qdrant:
     image: qdrant/qdrant:v1.14.0
+    restart: unless-stopped
     ports:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:6333/healthz"]
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/6333"]
       interval: 30s
       timeout: 10s
       start_period: 10s
       retries: 3
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /qdrant/snapshots
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
     networks:
       - agentic
 
+  # ── LLM chat UI ───────────────────────────────────────────────────────────
   open-webui:
     image: ghcr.io/open-webui/open-webui:v0.6.5
+    restart: unless-stopped
     ports:
       - "3009:8080"
     environment:
@@ -45,11 +84,28 @@ services:
       - open_webui_data:/app/backend/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
     networks:
       - agentic
 
+  # ── LLM observability (OpenTelemetry collector) ────────────────────────────
   phoenix:
     image: arizephoenix/phoenix:version-14.8.0
+    restart: unless-stopped
     ports:
       - "6006:6006"
       - "4317:4317"
@@ -57,18 +113,29 @@ services:
     volumes:
       - phoenix_data:/root/.phoenix
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:6006/healthz"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:6006/healthz')"]
       interval: 30s
       timeout: 10s
       start_period: 15s
       retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
     networks:
       - agentic
 
+  # ── Obsidian vault MCP server ──────────────────────────────────────────────
   obsidian-mcp:
     build:
       context: ../obsidian-mcp
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "3004:3000"
     environment:
@@ -77,19 +144,39 @@ services:
       - NODE_ENV=production
     volumes:
       - ./vault:/vault
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     networks:
       - agentic
 
+  # ── PydanticAI agent host ──────────────────────────────────────────────────
   agent-host:
     build:
       context: ./agent-host
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "8003:8000"
-    env_file:
-      - .env
     environment:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
+      - OLLAMA_TRIAGE_MODEL=${OLLAMA_TRIAGE_MODEL:-gemma3:9b}
+      - OLLAMA_REASONING_MODEL=${OLLAMA_REASONING_MODEL:-qwen2.5:32b}
       - VAULT_PATH=/vault
       - QDRANT_URL=http://qdrant:6333
       - OBSIDIAN_MCP_URL=${OBSIDIAN_MCP_URL:-http://obsidian-mcp:3000}
@@ -107,6 +194,18 @@ services:
         condition: service_healthy
       phoenix:
         condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
     networks:
       - agentic
 

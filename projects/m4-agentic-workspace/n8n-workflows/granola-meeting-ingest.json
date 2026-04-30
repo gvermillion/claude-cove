@@ -26,20 +26,20 @@
     },
     {
       "parameters": {
+        "functionCode": "// Parse Granola markdown for structured metadata\nconst raw = Buffer.from($binary.data.data, 'base64').toString('utf-8');\n\n// Extract **Participants:** line\nlet participants = [];\nconst partMatch = raw.match(/\\*\\*Participants:\\*\\*\\s*(.+?)(?:\\n|$)/i);\nif (partMatch) {\n  const entries = partMatch[1].split(',');\n  for (const entry of entries) {\n    const m = entry.trim().match(/^([A-Za-z][A-Za-z .'-]+?)(?:\\s*\\(([^)]+)\\))?$/);\n    if (m) {\n      participants.push({ name: m[1].trim(), company: m[2] ? m[2].trim() : null, email: null });\n    }\n  }\n}\n\n// Extract **Date:** line\nlet meetingDate = null;\nconst dateMatch = raw.match(/\\*\\*Date:\\*\\*\\s*(.+?)(?:\\n|$)/i);\nif (dateMatch) {\n  const parsed = new Date(dateMatch[1].trim());\n  if (!isNaN(parsed.getTime())) {\n    meetingDate = parsed.toISOString().split('T')[0];\n  }\n}\n\n// Split into granola_summary (structured notes before transcript) and transcript\n// Granola typically puts \"## Transcript\" or \"---\" before the raw transcript\nlet granolaSummary = null;\nlet transcript = raw;\nconst transcriptMarker = raw.search(/^## Transcript|^---$/m);\nif (transcriptMarker > 0) {\n  granolaSummary = raw.substring(0, transcriptMarker).trim();\n  transcript = raw.substring(transcriptMarker).replace(/^## Transcript\\s*\\n?|^---\\s*\\n?/m, '').trim();\n}\n\nreturn [\n  {\n    json: {\n      transcript: transcript,\n      filename: $('Watch Granola Folder').item.json.name,\n      participants: participants,\n      meeting_date: meetingDate,\n      granola_summary: granolaSummary\n    }\n  }\n];"
+      },
+      "id": "parse-metadata",
+      "name": "Parse Granola Metadata",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
         "url": "http://agent-host:8000/ingest/meeting",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "transcript",
-              "value": "={{ Buffer.from($binary.data.data, 'base64').toString('utf-8') }}"
-            },
-            {
-              "name": "filename",
-              "value": "={{ $('Watch Granola Folder').item.json.name }}"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
           "timeout": 120000
         }
@@ -48,7 +48,7 @@
       "name": "Send to Agent Host",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [680, 300]
+      "position": [900, 300]
     },
     {
       "parameters": {
@@ -66,7 +66,7 @@
       "name": "Check Response",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [900, 300]
+      "position": [1120, 300]
     }
   ],
   "connections": {
@@ -74,6 +74,9 @@
       "main": [[ { "node": "Read Transcript", "type": "main", "index": 0 } ]]
     },
     "Read Transcript": {
+      "main": [[ { "node": "Parse Granola Metadata", "type": "main", "index": 0 } ]]
+    },
+    "Parse Granola Metadata": {
       "main": [[ { "node": "Send to Agent Host", "type": "main", "index": 0 } ]]
     },
     "Send to Agent Host": {
