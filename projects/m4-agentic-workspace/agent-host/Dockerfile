@@ -3,32 +3,33 @@
 # ---- builder stage ----
 FROM python:3.12-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
+# Install only dependencies first (cache-friendly layer)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --no-install-project
 
 COPY src/ src/
+# Install the project package now that source is present
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 # ---- runtime stage ----
 FROM python:3.12-slim AS runtime
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+RUN apt-get update && apt-get install -y --no-install-recommends curl git \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system app && useradd --system --gid app app
 
 WORKDIR /app
 
-COPY --from=builder /app /app
-
-RUN chown -R app:app /app
+# Copy only the virtualenv and source — not pyproject.toml, uv.lock, or build artifacts
+COPY --from=builder --chown=app:app /app/.venv ./.venv
+COPY --from=builder --chown=app:app /app/src ./src
 
 USER app
 

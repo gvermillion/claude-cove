@@ -11,6 +11,22 @@ from m4_agent_host.config import settings
 from m4_agent_host.infrastructure.telemetry.tracer import tracer
 
 
+def _ensure_git_repo(vault: Path, git_bin: str) -> None:
+    """Initialize the vault as a git repo if it isn't one already."""
+    if (vault / ".git").exists():
+        return
+    subprocess.run(  # noqa: S603
+        [git_bin, "init"], cwd=vault, check=True, capture_output=True,
+    )
+    subprocess.run(  # noqa: S603
+        [git_bin, "add", "-A"], cwd=vault, check=True, capture_output=True,
+    )
+    subprocess.run(  # noqa: S603
+        [git_bin, "commit", "-m", "init: vault baseline", "--allow-empty"],
+        cwd=vault, check=True, capture_output=True,
+    )
+
+
 def commit_vault(message: str) -> None:
     """Stage all vault changes and create a git commit."""
     with tracer.start_as_current_span("vault.git_commit") as span:
@@ -20,6 +36,7 @@ def commit_vault(message: str) -> None:
         vault = Path(settings.vault_path)
         git_bin = shutil.which("git") or "/usr/bin/git"
         try:
+            _ensure_git_repo(vault, git_bin)
             subprocess.run([git_bin, "add", "-A"], cwd=vault, check=True, capture_output=True)  # noqa: S603
             result = subprocess.run(  # noqa: S603
                 [git_bin, "commit", "-m", message, "--allow-empty"],

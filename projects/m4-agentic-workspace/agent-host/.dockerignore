@@ -12,3 +12,8 @@ build/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+Dockerfile*
+docker-compose*
+.dockerignore
+*.md
+scripts/

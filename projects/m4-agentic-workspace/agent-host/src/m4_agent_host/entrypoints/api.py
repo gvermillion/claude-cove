@@ -38,8 +38,17 @@ async def ingest_meeting(req: MeetingIngestRequest) -> MeetingSignals:
         span.set_attribute("request.participant_count", len(req.participants or []))
         if req.meeting_date:
             span.set_attribute("request.meeting_date", req.meeting_date)
+        span.set_attribute(SpanAttributes.INPUT_VALUE,
+            f"{req.filename} ({len(req.transcript):,} chars"
+            + (", granola summary" if req.granola_summary else "")
+            + (f", {len(req.participants)} participants" if req.participants else "")
+            + ")")
         try:
             result = await _ingest_service.ingest_meeting(req)
+            span.set_attribute(SpanAttributes.OUTPUT_VALUE,
+                f"{len(result.entities)} entities, {len(result.risks)} risks, "
+                f"{len(result.opportunities)} opportunities, {len(result.tasks)} tasks"
+                + (" + synthesis" if result.synthesis else ""))
             span.set_attribute("response.entity_count", len(result.entities))
             span.set_attribute("response.risk_count", len(result.risks))
             span.set_attribute("response.opportunity_count", len(result.opportunities))

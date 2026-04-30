@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://qdrant:6333"
     log_level: str = "INFO"
     phoenix_collector_endpoint: str = "http://phoenix:6006/v1/traces"
+    phoenix_project_name: str = "m4-agent-host"
     user_email: str = "gvermillion@phdata.io"
+    enrich_citations: bool = True
 
 
 settings = Settings()
