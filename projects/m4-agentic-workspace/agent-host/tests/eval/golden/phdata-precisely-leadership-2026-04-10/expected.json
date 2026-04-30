@@ -1,0 +1,131 @@
+{
+  "meeting_date": "2026-04-10",
+  "entities": [
+    {
+      "name": "Shawn Weigel",
+      "role": null,
+      "org": "Precisely",
+      "relationship": "client",
+      "aliases": ["Shawn"],
+      "evidence": "Precisely team (Shawn, Ed) continuing with gross/net retention ratio development"
+    },
+    {
+      "name": "Ed Gundrum",
+      "role": null,
+      "org": "Precisely",
+      "relationship": "client",
+      "aliases": ["Ed"],
+      "evidence": "Precisely team (Shawn, Ed) continuing with gross/net retention ratio development"
+    },
+    {
+      "name": "Dave Shuman",
+      "role": null,
+      "org": "Precisely",
+      "relationship": "client",
+      "aliases": [],
+      "evidence": "Dave Shuman <dave.shuman@precisely.com>"
+    },
+    {
+      "name": "Caroline Trussell",
+      "role": null,
+      "org": "Precisely",
+      "relationship": "client",
+      "aliases": [],
+      "evidence": "Caroline Trussell from Precisely <caroline.trussell@precisely.com>"
+    },
+    {
+      "name": "Mark Ward",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Mark Ward from phData <mward@phdata.io>"
+    }
+  ],
+  "risks": [
+    {
+      "summary": "Current platform requires technical users, limiting Precisely adoption until citizen-developer UI ships",
+      "severity": "medium",
+      "project": "precisely",
+      "evidence": "Current state requires technical users; future platform enables citizen developers"
+    }
+  ],
+  "opportunities": [
+    {
+      "name": "Five-week sprint to deploy MCP server and Copilot integration for Precisely",
+      "type": "expansion",
+      "account": "Precisely",
+      "value_hint": null,
+      "stage_hint": "discussion",
+      "evidence": "Five-week sprint in discussion for MCP server deployment and Copilot integration rollout"
+    },
+    {
+      "name": "Microsoft Copilot integration via custom MCP server surfacing ARR agents in Teams",
+      "type": "expansion",
+      "account": "Precisely",
+      "value_hint": null,
+      "stage_hint": "discussion",
+      "evidence": "Microsoft Copilot integration via custom MCP server (access through Teams)"
+    },
+    {
+      "name": "Agentic plan caching optimization for cost/latency reduction on Precisely workloads",
+      "type": "workflow",
+      "account": "Precisely",
+      "value_hint": "13x latency reduction, 55.7% cost savings",
+      "stage_hint": "exploration",
+      "evidence": "Agentic plan caching optimization - 13x latency reduction, 55.7% cost savings"
+    }
+  ],
+  "tasks": [
+    {
+      "action": "Launch front-end platform enabling non-technical Precisely users to build agents",
+      "owner": null,
+      "due_hint": "mid-to-end next week",
+      "commitment": "hard",
+      "blocks": "citizen-developer adoption",
+      "evidence": "Front-end platform launching mid-to-end next week"
+    },
+    {
+      "action": "Run 1-hour knowledge-transfer session with Precisely plus follow-up support",
+      "owner": null,
+      "due_hint": null,
+      "commitment": "soft",
+      "blocks": null,
+      "evidence": "Knowledge transfer session (1 hour) plus follow-up support"
+    },
+    {
+      "action": "Continue gross/net retention ratio development",
+      "owner": "Shawn Weigel",
+      "due_hint": null,
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Precisely team (Shawn, Ed) continuing with gross/net retention ratio development"
+    }
+  ],
+  "dropped": [
+    {
+      "text": "100% budget consumed as of today - perfect completion",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "Reduces manual query time from 60 minutes to 60 seconds",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "15 different metrics, 50+ test questions",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "Precisely",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Microsoft Copilot",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Teams",
+      "reason": "stoplist_entity"
+    }
+  ]
+}

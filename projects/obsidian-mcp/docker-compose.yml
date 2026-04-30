@@ -1,0 +1,27 @@
+services:
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obsidian-mcp
+    restart: unless-stopped
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Mount the vault directory as read-write so the server can create/update notes
+      - ${VAULT_PATH}:/vault:rw
+    environment:
+      # Override VAULT_PATH inside the container — the host path is mounted at /vault
+      VAULT_PATH: /vault
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # nginx is managed on the host — see nginx/obsidian-mcp.conf for the site config.
+  # Copy that file to /etc/nginx/sites-available/ and symlink to sites-enabled/.

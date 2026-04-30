@@ -1,0 +1,149 @@
+{
+  "meeting_date": "2026-04-07",
+  "entities": [
+    {
+      "name": "Sergio Valenzuela",
+      "role": "Data Governance Director",
+      "org": "Trimble",
+      "relationship": "prospect",
+      "aliases": ["Sergio"],
+      "evidence": "Sergio is \"a mover\" - taking on expanded responsibilities beyond data governance director title"
+    },
+    {
+      "name": "Eric Schoch",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": ["Eric"],
+      "evidence": "despite Eric providing agenda days earlier"
+    },
+    {
+      "name": "Kelly Rose",
+      "role": "Governance lead",
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": ["Kelly"],
+      "evidence": "Data governance: Kelly ready despite topic not explicitly mentioned"
+    },
+    {
+      "name": "Kyle Mantione",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Kmantione@phdata.io"
+    },
+    {
+      "name": "Mark Bielagus",
+      "role": null,
+      "org": "phData",
+      "relationship": "colleague",
+      "aliases": [],
+      "evidence": "Mbielagus@phdata.io"
+    }
+  ],
+  "risks": [
+    {
+      "summary": "Sergio shared topics last-minute, compressing phData's time to tailor the pitch",
+      "severity": "medium",
+      "project": "trimble",
+      "evidence": "Sergio shared topics last-minute despite Eric providing agenda days earlier"
+    },
+    {
+      "summary": "Power BI demo is WM-branded; white-label work still in progress for Trimble demo",
+      "severity": "medium",
+      "project": "trimble",
+      "evidence": "Power BI integration available (currently WM-branded, working to white-label)"
+    }
+  ],
+  "opportunities": [
+    {
+      "name": "Trimble conversational analytics engagement via Sergio",
+      "type": "new_logo",
+      "account": "Trimble",
+      "value_hint": null,
+      "stage_hint": "discovery",
+      "evidence": "Tomorrow's Trimble meeting at Oswego location"
+    },
+    {
+      "name": "Queue-it cross-sell leveraging Trimble adjacency",
+      "type": "lateral",
+      "account": "Queue-it",
+      "value_hint": null,
+      "stage_hint": "exploration",
+      "evidence": "Queue-it: Potential Trimble customer relationship (complementary/adjacent businesses)"
+    },
+    {
+      "name": "Governance umbrella positioning covering platform, data, and AI",
+      "type": "workflow",
+      "account": "Trimble",
+      "value_hint": null,
+      "stage_hint": "positioning",
+      "evidence": "\"Umbrella effect\" - platform, data, and AI governance convergence"
+    }
+  ],
+  "tasks": [
+    {
+      "action": "White-label the Power BI conversational analytics demo before the Trimble meeting",
+      "owner": null,
+      "due_hint": "before tomorrow's meeting",
+      "commitment": "soft",
+      "blocks": "Trimble demo readiness",
+      "evidence": "Power BI integration available (currently WM-branded, working to white-label)"
+    },
+    {
+      "action": "Meet for pre-meeting coffee at Starbucks near Trimble office",
+      "owner": null,
+      "due_hint": "tomorrow before meeting",
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Pre-meeting coffee at Starbucks near Trimble office"
+    },
+    {
+      "action": "Kelly to cover data governance umbrella topic during meeting",
+      "owner": "Kelly Rose",
+      "due_hint": "tomorrow",
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Data governance: Kelly ready despite topic not explicitly mentioned"
+    },
+    {
+      "action": "Grant leads conversational analytics demo using NYC 311 sandbox",
+      "owner": "Grant Vermillion",
+      "due_hint": "tomorrow",
+      "commitment": "hard",
+      "blocks": null,
+      "evidence": "Grant leading conversational analytics demonstrations"
+    }
+  ],
+  "dropped": [
+    {
+      "text": "Tomorrow's Trimble meeting at Oswego location (25 min from Grant's Richmond location)",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "CrowdStrike: $1M deal signed",
+      "reason": "fact_not_task"
+    },
+    {
+      "text": "Snowflake",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Power BI",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Copilot Studio",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "WM",
+      "reason": "stoplist_entity"
+    },
+    {
+      "text": "Cocoa",
+      "reason": "stoplist_entity"
+    }
+  ]
+}

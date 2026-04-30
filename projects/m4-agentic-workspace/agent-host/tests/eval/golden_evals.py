@@ -1,0 +1,561 @@
+"""Golden eval dataset for M4 agent signal extraction.
+
+Each case was derived from real Granola meeting notes. The expected signals
+represent ground-truth labels: reviewable, non-exhaustive, but specific enough
+to measure recall without being so broad that any output passes.
+
+Expected signals use the canonical post-synthesize.merge schema so the LLM
+judge can compare apples-to-apples.  Field names match golden/*/expected.json:
+
+  entities:      name, role, org, relationship, aliases, evidence
+  risks:         summary, severity, project, evidence
+  opportunities: name, type, account, value_hint, stage_hint, evidence
+  tasks:         action, owner, due_hint, commitment, blocks, evidence
+
+Matching strategy:
+- Entities: case-insensitive name substring match
+- Risks / Opportunities / Tasks: word-overlap match derived from summary/name/action (>=2 of N words required)
+- Severity / type / relationship: exact string match when scored
+
+Usage:
+    uv run python tests/eval/run_evals.py --url http://localhost:8003
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Dropped:
+    text: str
+    reason: str  # fact_not_task | duplicate | stoplist_entity | ungrounded | wrong_category
+
+
+@dataclass
+class ExpectedEntity:
+    name: str  # substring match, case-insensitive
+    relationship: str  # client | colleague | stakeholder | vendor | partner | prospect | unknown
+    role: str | None = None  # job title / function
+    org: str | None = None  # company / org name
+    aliases: list[str] = field(default_factory=list)
+    evidence: str = ""  # verbatim quote (<=160 chars)
+    # Legacy informational fields (not in canonical schema but kept for data richness)
+    rapport_notes: list[str] = field(default_factory=list)
+    evidence_quote: str | None = None
+    source_line: int | None = None
+    confidence: str = "verified"  # verified | inferred
+
+
+@dataclass
+class ExpectedRisk:
+    summary: str  # canonical: was 'description'
+    severity: str  # high | medium | low
+    project: str | None = None  # canonical: was 'project_slug'
+    evidence: str = ""
+
+
+@dataclass
+class ExpectedOpportunity:
+    name: str  # canonical: was 'description'
+    type: str  # new_logo | expansion | lateral | workflow
+    account: str | None = None
+    value_hint: str | None = None
+    stage_hint: str | None = None
+    evidence: str = ""
+
+
+@dataclass
+class ExpectedTask:
+    action: str  # canonical: was 'description'
+    owner: str | None = None  # substring match if provided
+    due_hint: str | None = None  # canonical: was 'eta'; relative phrase, NOT ISO date
+    commitment: str = "implied"  # hard | soft | implied
+    blocks: str | None = None
+    evidence: str = ""
+
+
+@dataclass
+class EvalCase:
+    id: str
+    title: str
+    meeting_date: str
+    transcript: str
+    entities: list[ExpectedEntity] = field(default_factory=list)
+    risks: list[ExpectedRisk] = field(default_factory=list)
+    opportunities: list[ExpectedOpportunity] = field(default_factory=list)
+    tasks: list[ExpectedTask] = field(default_factory=list)
+    dropped: list[Dropped] = field(default_factory=list)
+    participants: list[dict] = field(default_factory=list)  # {name, email, company}
+    granola_summary: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Case 1: phData / CrowdStrike Polaris Project Sync  (Apr 17, 2026)
+# Source: client-facing multi-party project sync, technical + operational content
+# Signal richness: high tasks, medium risks (PTO/permissions), lateral opportunities
+# ---------------------------------------------------------------------------
+POLARIS_SYNC = EvalCase(
+    id="polaris-sync-2026-04-17",
+    title="phData_CrowdStrike Polaris Project Sync",
+    meeting_date="2026-04-17",
+    transcript="""
+Gabriel deployed a new semantic model for the Cortex Analyst with S1 pipe metrics.
+All metrics are included except S1 pipe expansion, which is not yet available in the
+production dataset. Gabriel used weighted averages instead of sums for mathematical
+accuracy. The model was deployed to the dev agent for testing.
+
+Grant demonstrated the Agent Management Platform front-end evaluation and deployment
+tool. It uses progressive disclosure: simple for end users, full functionality for
+technical users. It manages multiple agents, runs evaluations, monitors performance,
+and includes an interactive semantic model learning visualization with live coverage
+maps. The full improvement pipeline includes feedback collection and judge calibration.
+Architecture runs locally but connects to Snowflake; Snowpark Container Service is
+preferred for SSO and user identity forwarding. All telemetry is stored in Snowflake
+tables and is compatible with Prometheus and DataDog. The platform is also being
+ported to AWS Agent Forge and could be embedded in Drive Nexus for complete system
+visibility.
+
+Chakra completed a 20 to 40 metrics expansion in minimal development time, adding
+17 digital metrics definitions and demonstrating the before/after capability live
+in Slack. The system includes a feedback mechanism and context reset functionality.
+
+The team plans to run a side-by-side comparison between Cortex Analyst and Drive
+Nexus agents using the same 40 questions and identical scoring methodology. The
+framework creates temporary agent copies for testing with 15-dimensional scoring
+using TruLens evaluation judges.
+
+Access requirements: Chakra needs to grant ownership and permissions to the phData
+developer role before going on PTO. Gabriel needs to validate end-to-end access
+via a test query. The team needs a copy of the semantic model definitions as backup
+and backend table access for telemetry data.
+
+Next steps:
+- Chakra to grant permissions to phData team before PTO
+- Gabriel to validate end-to-end access via test query
+- Complete Drive Nexus vs Cortex Analyst evaluation next week
+- Schedule deep-dive session on evaluation methodology when Chakra returns
+- Deploy Gabriel's updates to dev Slack channel for testing
+- Abby to run comparisons between new logo vs expansion metrics
+""",
+    entities=[
+        ExpectedEntity("Saichakravarthy Annam", "stakeholder", org="CrowdStrike", aliases=["Chakra"]),
+        ExpectedEntity("Abby Liu", "stakeholder", org="CrowdStrike"),
+        ExpectedEntity("Gabriel Viana", "colleague", org="phData"),
+        ExpectedEntity("Maria Schumacher", "colleague", org="phData"),
+        ExpectedEntity("Stephanie Ortgies", "colleague", org="phData"),
+    ],
+    risks=[
+        ExpectedRisk("Chakra must grant phData developer role permissions before going on PTO", "high"),
+        ExpectedRisk("S1 pipe expansion metric not yet in production dataset", "medium"),
+        ExpectedRisk("End-to-end access via test query not yet validated", "medium"),
+    ],
+    opportunities=[
+        ExpectedOpportunity("Embed Agent Management Platform into Drive Nexus", "expansion", account="CrowdStrike"),
+        ExpectedOpportunity("Prometheus/DataDog telemetry integration", "lateral", account="CrowdStrike"),
+        ExpectedOpportunity("Port Agent Management Platform to AWS Agent Forge", "lateral", account="CrowdStrike"),
+    ],
+    tasks=[
+        ExpectedTask("Grant permissions to phData team before PTO", "Chakra", due_hint="before PTO", commitment="hard", blocks="Gabriel end-to-end access validation"),
+        ExpectedTask("Validate end-to-end access via test query", "Gabriel", commitment="hard"),
+        ExpectedTask("Complete Drive Nexus vs Cortex Analyst evaluation", due_hint="next week", commitment="hard"),
+        ExpectedTask("Deploy Gabriel's updates to dev Slack for testing", "Gabriel", commitment="hard"),
+        ExpectedTask("Run comparisons between new logo vs expansion metrics", "Abby", commitment="hard"),
+        ExpectedTask("Schedule deep-dive on evaluation methodology when Chakra returns", due_hint="when Chakra returns", commitment="soft"),
+    ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Saichakravarthy Annam", "email": "saichakravarthy.annam@crowdstrike.com", "company": "CrowdStrike"},
+        {"name": "Abby Liu", "email": "abby.liu@crowdstrike.com", "company": "CrowdStrike"},
+        {"name": "Maria Schumacher", "email": "mschumacher@phdata.io", "company": "phData"},
+        {"name": "Gabriel Viana", "email": "gviana@phdata.io", "company": "phData"},
+        {"name": "Stephanie Ortgies", "email": "sortgies@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Cortex Analyst Updates
+- Gabriel deployed new semantic model with S1 pipe metrics (all except S1 pipe expansion — not in prod dataset yet)
+- Uses weighted averages instead of sums for mathematical accuracy; deployed to dev agent for testing
+- Next steps: add S1 pipe expansion once in prod, deploy to dev Slack, Abby to compare new logo vs expansion metrics
+
+### Agent Management Platform Demo
+- Grant showcased front-end evaluation/deployment tool with progressive disclosure design
+- Manages multiple agents, runs evaluations, monitors performance with live coverage maps
+- Architecture: runs locally, connects to Snowflake; Snowpark Container Service preferred for SSO
+- Telemetry stored in Snowflake (Prometheus/DataDog compatible); being ported to AWS Agent Forge; embeddable in Drive Nexus
+
+### Drive Nexus Agent Expansion
+- Chakra completed 20→40 metrics expansion, adding 17 digital metrics definitions; demonstrated live in Slack
+- Includes feedback mechanism and context reset functionality; no plotting (interface limitations)
+
+### Evaluation Framework Setup
+- Side-by-side comparison: Cortex Analyst vs Drive Nexus agents, same 40 questions, 15-dimensional TruLens scoring
+- Access requirements: Chakra grant permissions to phData developer role; Gabriel validate access via test query; get semantic model copy + backend table access
+
+### Next Steps
+- Chakra to grant permissions to phData team before PTO
+- Gabriel to validate end-to-end access via test query
+- Complete Drive Nexus vs Cortex Analyst evaluation next week
+- Schedule deep-dive on evaluation methodology when Chakra returns
+- Deploy Gabriel's updates to dev Slack for testing
+- Abby to run comparisons between new logo vs expansion metrics""",
+)
+
+
+# ---------------------------------------------------------------------------
+# Case 2: Trimble x phData Introduction  (Apr 8, 2026)
+# Source: new prospect first meeting, discovery-heavy, many named stakeholders
+# Signal richness: high entities (new contacts), high opportunities (discovery work),
+#                  risks (internal friction, funding), clear next steps / tasks
+# ---------------------------------------------------------------------------
+TRIMBLE_INTRO = EvalCase(
+    id="trimble-intro-2026-04-08",
+    title="Trimble x phData Introduction",
+    meeting_date="2026-04-08",
+    transcript="""
+Trimble is a 49-year-old company with a heavy acquisition strategy. A new CEO
+(5 years ago) shifted strategy from letting acquisitions operate independently
+to connecting them to scale. They are currently consolidating from 32 ERPs to 1
+and from 30 CRMs to 1.
+
+Trimble has three divisions: Transportation and Logistics (15%), Field Systems
+(40%), and AECO construction software (45%), which is the growth vehicle. Average
+employee tenure is 12 years with some at 36+ years. They have a strong AWS and
+Snowflake partnership with embedded teams 3 to 4 times per week.
+
+Sergio Valenzuela is 7 months at Trimble, previously at Salesforce and Adidas.
+He reports to Chris Buckler, Head of Platform, under new CIO Chris B. Sergio
+leads enterprise data management strategy covering metadata management, master data
+quality, data engineering, and architecture. His Data Enabling Decision Group meets
+bi-weekly and includes the CIO, CISO, Head of Legal, Chief of Staff, and Finance
+Transformation. This group is fully empowered to make funding decisions.
+
+Joe Mastroianni is the data counterpart on the Trimble side and should be included
+in future discussions. Victor Solano and Sian Riebe also attended from Trimble.
+
+Current challenges: Shadow data departments across the organization are using every
+tool available. Field Systems does not know where data is created, who owns it, or
+how it is consumed. Previous data governance attempts failed due to lack of funding.
+They are currently using Purview, which is inadequate for a non-Microsoft shop.
+
+Trimble has two separate AI teams: Internal AI (Avia T. Ion) focusing on code
+analysis and process improvement, and Agentic AI (Tyler Miller, based in Netherlands)
+building customer-facing products for an AI Studio marketplace. There is pressure to
+ship by the Dimensions conference in Las Vegas this summer. They are switching from
+Azure to AWS for new AI products. There is no governance or security process for AI
+product evaluation yet.
+
+Snowflake was recently announced as the enterprise data cloud partner, which caused
+waves internally. They are evaluating metadata catalogs: Atlan (completing POC),
+Kolibra, DataHub, Select Star, and Informatica. They want to move from Tableau to
+conversational analytics.
+
+There is potential friction between the Agentic AI team and external consultants due
+to loyalty to internal teams. Funding for the Field Systems discovery work will be
+challenging and may require creative partnership with AWS and Snowflake.
+
+James in New Zealand was identified as a key stakeholder for Field Systems work.
+
+Next steps:
+- MSA/NDA execution to open deeper conversations
+- Sergio to share RFP for Field Systems discovery work
+- Include Joe Mastroianni in future discussions
+- Share meeting recording with James and Joe
+- Potential guest speaker opportunity: Vincent from phData AI strategy
+""",
+    entities=[
+        ExpectedEntity("Sergio Valenzuela", "stakeholder", org="Trimble"),
+        ExpectedEntity("Joe Mastroianni", "stakeholder", org="Trimble"),
+        ExpectedEntity("Victor Solano", "stakeholder", org="Trimble"),
+        ExpectedEntity("Melissa Bielagus", "colleague", org="phData"),
+        ExpectedEntity("Eric Schoch", "colleague", org="phData"),
+        ExpectedEntity("Jordan Birdsell", "colleague", org="phData"),
+    ],
+    risks=[
+        ExpectedRisk("Potential friction between Agentic AI internal team and external consultants due to loyalty concerns", "medium"),
+        ExpectedRisk("Funding for Field Systems discovery work will be challenging and may require creative partnership with AWS and Snowflake", "medium"),
+        ExpectedRisk("Pressure to ship AI products by the Dimensions conference in Las Vegas this summer", "high"),
+        ExpectedRisk("No governance or security process exists for AI product evaluation", "medium"),
+    ],
+    opportunities=[
+        ExpectedOpportunity("Field Systems unbiased data landscape assessment and Snowflake migration", "expansion", account="Trimble"),
+        ExpectedOpportunity("Data products on Snowflake marketplace for monetization", "expansion", account="Trimble"),
+        ExpectedOpportunity("AI governance and security process for AI product evaluation", "workflow", account="Trimble"),
+        ExpectedOpportunity("Replace Tableau with conversational analytics capabilities", "expansion", account="Trimble"),
+    ],
+    tasks=[
+        ExpectedTask("Execute MSA and NDA to open deeper conversations", commitment="hard"),
+        ExpectedTask("Share RFP for Field Systems discovery work", "Sergio", commitment="hard"),
+        ExpectedTask("Include Joe Mastroianni in future discussions", commitment="soft"),
+        ExpectedTask("Share meeting recording with James and Joe", commitment="hard"),
+        ExpectedTask("Potential guest speaker opportunity with Vincent from phData on AI strategy", commitment="soft"),
+    ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Melissa Bielagus", "email": "mbielagus@phdata.io", "company": "phData"},
+        {"name": "Sergio Valenzuela", "email": "sergio_valenzuela@trimble.com", "company": "Trimble"},
+        {"name": "Eric Schoch", "email": "eric@phdata.io", "company": "phData"},
+        {"name": "Joe Mastroianni", "email": "joe_mastroianni@trimble.com", "company": "Trimble"},
+        {"name": "Sian Riebe", "email": "sian_riebe@trimble.com", "company": "Trimble"},
+        {"name": "Victor Solano", "email": "victor_solano@trimble.com", "company": "Trimble"},
+        {"name": "Jordan Birdsell", "email": "jbirdsell@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Trimble Overview
+- 49-year-old company, heavy acquisitions; new CEO (5yr) shifting to "connect to scale": 32 ERPs→1, 30 CRMs→1
+- Three divisions: Transportation & Logistics (15%), Field Systems (40%, hardware OG), AECO (45%, construction software, growth vehicle)
+- Strong AWS/Snowflake partnership (embedded teams 3-4x/week)
+
+### Data Challenges
+- Shadow data depts using every tool; Field Systems doesn't know where data is created, owned, or consumed
+- Previous governance failed due to lack of funding; using Purview (inadequate for non-Microsoft shop)
+
+### Sergio's Role
+- 7 months at Trimble (prev: Salesforce, Adidas); reports to Chris Buckler under new CIO Chris B
+- Leads enterprise data management: metadata, master data quality, data engineering, architecture
+- Data Enabling Decision Group (bi-weekly): CIO, CISO, Head of Legal, Chief of Staff, Finance Transformation — empowered to fund
+
+### AI Initiatives
+- Two AI teams: Internal AI (Avia T. Ion, code/process) and Agentic AI (Tyler Miller, Netherlands, customer-facing marketplace)
+- Pressure to ship by Dimensions conference (Las Vegas, summer); switching Azure→AWS for new AI products
+- No governance/security process for AI product evaluation yet
+
+### Field Systems Discovery Opportunity
+- Need unbiased landscape assessment before integration; funding challenge may need AWS/Snowflake partnership
+- James (New Zealand) key stakeholder; goal: map data ecosystem, identify Snowflake migration value
+
+### Next Steps
+- MSA/NDA execution to open deeper conversations
+- Sergio to share RFP for Field Systems discovery work
+- Include Joe Mastroianni in future discussions
+- Share recording with James and Joe
+- Potential: Vincent from phData as guest speaker on AI strategy""",
+)
+
+
+# ---------------------------------------------------------------------------
+# Case 3: Jordy / Grant 1:1  (Apr 16, 2026)
+# Source: peer engineering 1:1, technical + project updates, personal rapport
+# Signal richness: medium tasks, medium risks (timeline + technical), rapport notes
+# ---------------------------------------------------------------------------
+JORDY_GRANT_1ON1 = EvalCase(
+    id="jordy-grant-1on1-2026-04-16",
+    title="Jordy / Grant",
+    meeting_date="2026-04-16",
+    transcript="""
+Jordy gave an update on the Brazil employment transition. phData is converting
+Brazil contractors to CLT employees, resulting in about a 30% decrease in monthly
+take-home pay, partially offset by FGTS fund contributions and benefits. Jordy is
+not concerned about the transition and is grateful for employment stability given
+industry layoffs. He sees long-term value in worker protections and is positive
+about potential Brazil leadership opportunities. Some team members have strong
+complaints about reduced take-home pay, taxes, and health insurance coverage in
+certain regions.
+
+MetroTech Phase 2 has 1.5 weeks remaining to deliver all features. After three
+meetings with the client, the team completed an SOW review using AI to generate
+a detailed spreadsheet mapping all requirements to user stories. Most items are
+covered except for problematic ingestions from Phase 1. Brandon is discussing
+ingestion scope with Tyler. Jordy hit his Claude quota but has a MetroTech
+subscription for parallel work.
+
+Grant shared token optimization techniques for Claude: a Rust-based bash command
+interceptor to reduce unnecessary output and pre/post tool hooks to prevent redundant
+file reads. Users are reporting millions of tokens saved monthly.
+
+Jordy is experimenting with DSPy for prompt optimization. He built a LiteLLM proxy
+server to handle Snowflake rate limits with cooldown and retry logic. Optimization
+runs take 8 or more hours due to sequential processing. He is missing intermediate
+step logging in DSPy and cannot show the full optimization progression to the client.
+
+Grant's evaluation framework is nearly ready. The backend is functional with 13
+judges analyzing agent performance. The frontend demo mode is broken and needs fixes.
+The system breaks prompts into modules mapped to failure modes and produces
+optimization reports showing before-and-after changes.
+
+Grant mentioned planning an agentic plan cache layer with a RAG component to cache
+complex query reasoning and reduce token usage on repeated complex questions.
+""",
+    entities=[
+        ExpectedEntity("Jordy Antunes", "colleague", org="phData"),
+        ExpectedEntity("Brandon", "colleague", org="phData"),
+    ],
+    risks=[
+        ExpectedRisk("MetroTech Phase 2 has 1.5 weeks remaining to deliver all features", "high", project="metrotech"),
+        ExpectedRisk("Problematic Phase 1 ingestions are unresolved and blocking MetroTech Phase 2 delivery", "medium", project="metrotech"),
+        ExpectedRisk("Some Brazil team members have strong complaints about CLT transition reducing take-home pay", "medium"),
+        ExpectedRisk("DSPy optimization runs take 8+ hours due to sequential processing", "low"),
+    ],
+    opportunities=[
+        ExpectedOpportunity("Token optimization via Rust bash interceptor and pre/post tool hooks", "workflow"),
+        ExpectedOpportunity("Agentic plan cache layer with RAG component to reduce token usage", "workflow"),
+    ],
+    tasks=[
+        ExpectedTask("Resolve MetroTech Phase 1 ingestion scope with Tyler", "Brandon", commitment="hard"),
+        ExpectedTask("Fix frontend demo mode in evaluation framework", "Grant", commitment="hard"),
+        ExpectedTask("Implement agentic plan cache layer with RAG component", "Grant", commitment="soft"),
+    ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Jordy Antunes", "email": "jantunes@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Brazil Employment Transition
+- phData converting Brazil contractors to CLT employees; ~30% monthly take-home decrease, offset by FGTS + benefits; net positive by year-end
+- Jordy not concerned; grateful for stability amid layoffs; sees long-term value; some team members complaining about taxes and health coverage
+
+### MetroTech Phase 2
+- 1.5 weeks remaining to deliver all features; SOW review completed with AI-generated requirements→user stories mapping
+- Most items covered except problematic Phase 1 ingestions; Brandon discussing ingestion scope with Tyler
+
+### AI Tool Optimization
+- Grant sharing token optimization: Rust bash interceptor + pre/post tool hooks; millions of tokens saved monthly
+- Jordy experimenting with DSPy: built LiteLLM proxy for Snowflake rate limits; 8+ hour optimization runs due to sequential processing; missing intermediate logging
+
+### Workflow Challenges
+- Grant's evaluation framework: backend functional (13 judges), frontend demo mode broken; breaks prompts into modules mapped to failure modes
+- Grant's system: $60-70/full run (Sonnet 3.5); Jordy's MetroTech: $200+ due to large doc processing; missing prompt caching in Snowflake Claude
+
+### Next Steps
+- Fix frontend demo mode in evaluation framework (Grant)
+- Implement agentic plan cache layer with RAG component (Grant)
+- Brandon to resolve MetroTech Phase 1 ingestion scope with Tyler""",
+)
+
+
+# ---------------------------------------------------------------------------
+# Case 4: ML Practice Strategy Meeting  (Apr 14, 2026)
+# Source: large internal practice meeting, pipeline/staffing/tech strategy
+# Signal richness: very high opportunities (pipeline), high risks (pipeline, utilization),
+#                  medium tasks (cross-functional), many entities
+# ---------------------------------------------------------------------------
+ML_PRACTICE_STRATEGY = EvalCase(
+    id="ml-practice-strategy-2026-04-14",
+    title="ML Practice Strategy Meeting",
+    meeting_date="2026-04-14",
+    transcript="""
+Brian Cohn Welke joined as Principal ML Solutions Architect. He has a PhD in
+computer science, 10+ years of ML and data science experience, and specializes
+in healthcare, life sciences, and energy sectors. He has a background in autonomous
+vehicles, surgical innovations, and medical imaging. He is located in Colorado.
+Eric Carpenter won the Milwaukee meatball competition over the weekend.
+
+Current utilization is trending around 70 to 75% and dropping off in coming weeks.
+Three new MLEs are on the bench: Latium, Lucas, Bruno, and David. Bruno is
+interviewing at Chick-fil-A for a restaurant operations opportunity. Nikke is leaving
+the organization and needs to be backfilled at Chick-fil-A. Upcoming opportunities
+include Leonard, InterNova, and Precisely. George is likely going to Leonard, kicking
+off next week. A Latium MLE needs to be identified for Precisely starting next week.
+CrowdStrike legal is still in progress but showing a positive tone shift and is within
+one to two weeks of closing.
+
+Pipeline analysis showed $12M in pipeline vanished from Q1, $9M appeared in Q3.
+Current pipeline is around $18M and the team needs to close two-thirds to hit the
+$12.5M target. Q-IT dropped from $5M to $1.25M with no clear explanation. Stride
+remains the largest opportunity and could take $5M immediately. Norwegian Cruise Lines
+is a $700K opportunity that was pitched successfully yesterday. Andrew is seeking
+volunteers to shadow pipeline analysis work.
+
+A "wait and see" objection is emerging from clients blocking deals. Precisely is
+debating MCP integration versus waiting for Snowflake releases. Solutions discussed:
+connect with Laura Martinelli, the Snowflake partner solutions engineer; access the
+product roadmap through partner channels; emphasize preserving optionality. Garrett
+was designated as the ML practice point person for the Snowflake product roadmap.
+
+Murray Webb is flying to Minneapolis Monday for a big AWS review with Brian. Recent
+wins include a Workday demo with the data services accelerator that got a resounding
+yes, Cook Unity that kicked off with potential downstream engagements, and Digital
+Lock requesting direct engagement training. A Delta meeting is planned for May with
+Todd in Atlanta. CrowdStrike was identified as an AWS and Snowflake opportunity.
+
+Omar's skills-based agentic delivery framework targets reducing talk-to-data projects
+from 6 to 8 weeks down to 4 weeks, enabling fixed-bid pricing, and cutting costs from
+roughly $100K to $40K per engagement. A marketing strategy meeting needs to be
+scheduled with Grant, Omar, and Gary.
+""",
+    entities=[
+        ExpectedEntity("Brian Cohn Welke", "colleague", role="Principal ML Solutions Architect", org="phData"),
+        ExpectedEntity("Murray Webb", "colleague", org="phData"),
+        ExpectedEntity("Brandon Veber", "colleague", org="phData"),
+        ExpectedEntity("Andrew Evans", "colleague", org="phData"),
+        ExpectedEntity("Dominick Rocco", "colleague", org="phData"),
+        ExpectedEntity("Garrett Springer", "colleague", org="phData"),
+        ExpectedEntity("Eric Carpenter", "colleague", org="phData"),
+        ExpectedEntity("Elizabeth Dinevski", "colleague", org="phData"),
+    ],
+    risks=[
+        ExpectedRisk("$12M in pipeline vanished from Q1 with $9M appearing in Q3", "high"),
+        ExpectedRisk("Q-IT pipeline dropped from $5M to $1.25M with no clear explanation", "high"),
+        ExpectedRisk("Utilization is trending around 70-75% and dropping in coming weeks", "medium"),
+        ExpectedRisk("CrowdStrike legal is still in progress, within one to two weeks of closing", "high"),
+        ExpectedRisk("Wait and see objection is emerging from clients and blocking deal closure", "medium"),
+        ExpectedRisk("Nikke is leaving the organization and needs to be backfilled at Chick-fil-A", "medium"),
+    ],
+    opportunities=[
+        ExpectedOpportunity("Norwegian Cruise Lines $700K opportunity pitched successfully", "expansion"),
+        ExpectedOpportunity("Stride largest opportunity at $5M could close immediately", "expansion"),
+        ExpectedOpportunity("Cook Unity kicked off with potential downstream engagements", "expansion"),
+        ExpectedOpportunity("Digital Lock requesting direct engagement training", "expansion"),
+        ExpectedOpportunity("Delta meeting planned for May in Atlanta with Todd", "expansion"),
+        ExpectedOpportunity("Agentic delivery framework reduces talk-to-data projects from 6-8 weeks to 4 weeks", "workflow"),
+    ],
+    tasks=[
+        ExpectedTask("Fly to Minneapolis Monday for big AWS review with Brian", "Murray", due_hint="Monday", commitment="hard"),
+        ExpectedTask("Designated as ML practice point person for Snowflake product roadmap", "Garrett", commitment="hard"),
+        ExpectedTask("Schedule marketing strategy meeting with Grant, Omar, and Gary", commitment="soft"),
+        ExpectedTask("Connect with Laura Martinelli, Snowflake partner solutions engineer", commitment="soft"),
+        ExpectedTask("Kick off Leonard engagement next week", "George", due_hint="next week", commitment="hard"),
+        ExpectedTask("Identify a Latium MLE for Precisely", due_hint="next week", commitment="hard"),
+        ExpectedTask("Seeking volunteers to shadow pipeline analysis work", "Andrew", commitment="soft"),
+    ],
+    participants=[
+        {"name": "Grant Vermillion", "email": "grant.w.vermillion@gmail.com", "company": "phData"},
+        {"name": "Murray Webb", "email": "mwebb@phdata.io", "company": "phData"},
+        {"name": "Brandon Veber", "email": "bveber@phdata.io", "company": "phData"},
+        {"name": "Andrew Evans", "email": "aevans@phdata.io", "company": "phData"},
+        {"name": "Dominick Rocco", "email": "drocco@phdata.io", "company": "phData"},
+        {"name": "Garrett Springer", "email": "gspringer@phdata.io", "company": "phData"},
+        {"name": "Eric Carpenter", "email": "ecarpenter@phdata.io", "company": "phData"},
+        {"name": "Elizabeth Dinevski", "email": "edinevski@phdata.io", "company": "phData"},
+        {"name": "Madison Nelson", "email": "mnelson@phdata.io", "company": "phData"},
+        {"name": "Brian Cohn Welke", "email": "bcohn@phdata.io", "company": "phData"},
+        {"name": "Zachary Zinda", "email": "zzinda@phdata.io", "company": "phData"},
+        {"name": "Steven Price", "email": "sprice@phdata.io", "company": "phData"},
+        {"name": "Erik Hyrkas", "email": "ehyrkas@phdata.io", "company": "phData"},
+    ],
+    granola_summary="""### Welcome & Introductions
+- Brian Cohn Welke joined as Principal ML Solutions Architect: PhD CS, 10+ yrs ML, healthcare/life sciences/energy specialist
+- Team now covers all US time zones; Eric Carpenter won Milwaukee meatball competition
+
+### Utilization & Staffing
+- Utilization ~70-75%, dropping; bench: Latium, Lucas, Bruno, David (new MLEs)
+- Bruno interviewing at Chick-fil-A; Nikke leaving, needs backfill; upcoming: Leonard, InterNova, Precisely
+- George → Leonard (next week); need Latium MLE for Precisely next week
+- CrowdStrike legal: positive tone shift, 1-2 weeks from closing
+
+### Pipeline
+- $12M vanished from Q1, $9M appeared in Q3; current ~$18M, need 2/3 to hit $12.5M target
+- Q-IT dropped $5M→$1.25M unexplained; Stride largest opp (could take $5M immediately)
+- Norwegian Cruise Lines: $700K pitched successfully; Andrew seeking pipeline analysis volunteers
+
+### Technology Roadmap
+- "Wait and see" objection emerging; Precisely debating MCP vs Snowflake releases
+- Solutions: Laura Martinelli (Snowflake partner SE), product roadmap access, preserve optionality
+- Garrett designated ML practice point person for Snowflake roadmap
+
+### AWS Partnership
+- Murray flying to Minneapolis Monday for big AWS review with Brian
+- Recent wins: Workday (resounding yes), Cook Unity (downstream potential), Digital Lock (training)
+- Upcoming: Delta meeting May with Todd in Atlanta; CrowdStrike = AWS+Snowflake opportunity
+
+### Agentic Delivery Framework
+- Omar's skills-based framework: reduces talk-to-data projects 6-8wks→4wks, enables fixed-bid, cost $100K→$40K
+- Next: Marketing strategy meeting with Grant, Omar, Gary""",
+)
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+ALL_CASES: list[EvalCase] = [
+    POLARIS_SYNC,
+    TRIMBLE_INTRO,
+    JORDY_GRANT_1ON1,
+    ML_PRACTICE_STRATEGY,
+]

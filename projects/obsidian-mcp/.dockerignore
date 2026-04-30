@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.git/
+.gitignore
+.env*
+tests/
+*.log
+.turbo/
+coverage/
+Dockerfile*
+docker-compose*
+.dockerignore
+*.md
